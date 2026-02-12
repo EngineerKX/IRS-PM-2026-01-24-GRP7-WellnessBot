@@ -1,3 +1,13 @@
+if (Test-Path ".env") {
+  Get-Content .env | ForEach-Object {
+    if ($_ -match "^\s*([^#][^=]*)=(.*)$") {
+      $name = $matches[1]
+      $value = $matches[2]
+      [System.Environment]::SetEnvironmentVariable($name, $value)
+    }
+  }
+}
+
 $ErrorActionPreference = "Stop"
 
 # Ensure we run from repo root

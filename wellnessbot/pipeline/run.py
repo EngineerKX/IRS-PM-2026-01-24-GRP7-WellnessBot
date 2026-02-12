@@ -11,6 +11,9 @@ from wellnessbot.rules.engine import evaluate_rules
 from wellnessbot.rules.rule_types import Action
 from wellnessbot.planner.planner import plan
 
+from wellnessbot.nlu.openai_extractor import extract_with_fallback
+
+
 
 def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]:
     """
@@ -18,14 +21,18 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
     User Text -> NLU -> State -> KG -> Rules -> Planner(if RECOMMEND) -> Final decision -> Response layer
     Note: RAG not in this round.
     """
+    print("OPENAI_API_KEY exists:", bool(os.getenv("OPENAI_API_KEY")))
+    print("MOCK_NLU:", os.getenv("MOCK_NLU"))
+    print("force_mock_nlu:", force_mock_nlu)
+
     mock_env = os.getenv("MOCK_NLU", "1").strip() == "1"
     use_mock = force_mock_nlu or mock_env
 
-    # PHASE 2A (now): mock only. OpenAI extractor will be added later with fail-safe fallback.
-    nlu: NLUOutput = extract_mock(user_text)
-    if not use_mock:
-        # placeholder behavior until openai_extractor.py is implemented:
-        nlu.nlu_source = "mock_fallback"
+    if use_mock:
+        nlu: NLUOutput = extract_mock(user_text)
+    else:
+        nlu = extract_with_fallback(user_text=user_text, timeout_s=12.0)
+
 
     # Early clarify if key fields missing (weeks is mandatory for safe phase)
     state = infer_state(nlu)

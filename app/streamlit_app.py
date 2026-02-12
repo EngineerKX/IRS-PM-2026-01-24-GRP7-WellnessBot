@@ -11,7 +11,7 @@ user_text = st.text_area("Describe your situation and requested exercise:", valu
 
 col1, col2 = st.columns(2)
 with col1:
-    mock = st.toggle("MOCK_NLU", value=True, help="Mock-first. OpenAI optional later.")
+    mock = st.toggle("MOCK_NLU", value=False, help="Mock-first. OpenAI optional later.")
 with col2:
     st.caption("Safety: not diagnosis. Outputs: RECOMMEND / FORBID / CLARIFY / ESCALATE.")
 
