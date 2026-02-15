@@ -25,7 +25,7 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
     print("MOCK_NLU:", os.getenv("MOCK_NLU"))
     print("force_mock_nlu:", force_mock_nlu)
 
-    mock_env = os.getenv("MOCK_NLU", "1").strip() == "1"
+    mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
 
     if use_mock:
