@@ -14,6 +14,10 @@ if "chat" not in st.session_state:
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False  # default OpenAI
 
+# NEW: pending message support (Option A)
+if "pending" not in st.session_state:
+    st.session_state.pending = None  # holds user_text waiting to be processed
+
 # --- Controls (top bar) ---
 with st.container():
     col1, col2 = st.columns([1, 1])
@@ -26,6 +30,7 @@ with st.container():
     with col2:
         if st.button("Clear chat"):
             st.session_state.chat = []
+            st.session_state.pending = None
             st.rerun()
 
 st.divider()
@@ -56,17 +61,15 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Input box (chat style) ---
-user_text = st.chat_input("Type your message (e.g., '3 weeks after ACL surgery, pain 4/10, want squats')")
+# ✅ NEW: if there is pending work, compute now and replace the "Thinking..." bubble
+if st.session_state.pending:
+    pending_text = st.session_state.pending
+    st.session_state.pending = None
 
-if user_text:
-    # 1) add user message
-    st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
+    # Run pipeline
+    result = run_pipeline(user_text=pending_text, force_mock_nlu=st.session_state.mock_toggle)
 
-    # 2) run pipeline (thin UI – no decision logic here)
-    result = run_pipeline(user_text=user_text, force_mock_nlu=st.session_state.mock_toggle)
-
-    # 3) craft a concise assistant message (no decision changes)
+    # Craft assistant message (no decision changes)
     action = result["decision"]["action"]
 
     # Select rule matching final action
@@ -74,7 +77,6 @@ if user_text:
     top_rule = next((r for r in rules if r.get("action") == action), None)
     if top_rule is None and rules:
         top_rule = rules[0]
-
     rationale = top_rule.get("rationale") if top_rule else "Decision generated."
 
     # Rule IDs (traceability)
@@ -86,8 +88,46 @@ if user_text:
     cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
     cite_line = f"\n\nSources: {cite_str}" if citations else ""
 
-    assistant_text = f"**{action}**\n\n{rationale}{rule_line}{cite_line}"
+    # Show planner recommendation / alternatives
+    planner = result["audit_trace"].get("planner")
+    planner_line = ""
+    if planner:
+        if planner.get("type") == "alternatives":
+            items = planner.get("items", [])
+            names = [it.get("name") for it in items if it.get("name")]
+            if names:
+                planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
+        else:
+            ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+            dose = planner.get("dose", {})
+            stop = planner.get("stop_conditions", [])
+            planner_line = (
+                f"\n\n**Recommended exercise:** {ex_name}"
+                f"\n\nDose: {dose.get('sets')} sets × {dose.get('reps')} reps, {dose.get('frequency_per_day')}×/day"
+            )
+            if stop:
+                planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
 
-    st.session_state.chat.append({"role": "assistant", "text": assistant_text, "result": result})
+    assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
 
+    # Replace the last message if it's the placeholder; otherwise append safely
+    if st.session_state.chat and st.session_state.chat[-1]["role"] == "assistant" and st.session_state.chat[-1]["result"] is None:
+        st.session_state.chat[-1] = {"role": "assistant", "text": assistant_text, "result": result}
+    else:
+        st.session_state.chat.append({"role": "assistant", "text": assistant_text, "result": result})
+
+    st.rerun()
+
+# --- Input box (chat style) ---
+user_text = st.chat_input("Type your message (e.g., '3 weeks after ACL surgery, pain 4/10, want squats')")
+
+if user_text:
+    # 1) add user message immediately
+    st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
+
+    # 2) add placeholder assistant bubble immediately
+    st.session_state.chat.append({"role": "assistant", "text": "Thinking…", "result": None})
+
+    # 3) set pending and rerun so UI updates first
+    st.session_state.pending = user_text
     st.rerun()

@@ -146,3 +146,21 @@ def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExerci
         swelling_allowed=swelling_allowed,
         source_refs=source_refs,
     )
+
+def list_exercises_for_phase(event_type: str, phase_id: str) -> List[CompatibleExercise]:
+    proto = get_protocol_for_event(event_type)
+    if not proto:
+        return []
+
+    out: List[CompatibleExercise] = []
+    for ex_id in proto.exercises.keys():
+        ex = get_exercise(ex_id, event_type)
+        if not ex:
+            continue
+        if phase_id in (ex.allowed_phases or []):
+            out.append(ex)
+
+    # deterministic order for stability
+    out.sort(key=lambda e: (e.name.lower(), e.exercise_id))
+    return out
+
