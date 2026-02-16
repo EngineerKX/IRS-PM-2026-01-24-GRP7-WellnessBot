@@ -17,12 +17,51 @@ phases:
     week_max: 12
 
 exercise_aliases:
+  # existing
   squats: E_SQUAT
+  squat: E_SQUAT
   heel slides: E_HEEL_SLIDES
+  heel slide: E_HEEL_SLIDES
   quad sets: E_QUAD_SETS
+  quad set: E_QUAD_SETS
   straight leg raise: E_SLR
+  slr: E_SLR
+
+  # added
+  ankle pumps: E_ANKLE_PUMPS
+  ankle pump: E_ANKLE_PUMPS
+  stationary bike: E_STATIONARY_BIKE
+  bike: E_STATIONARY_BIKE
+  cycling: E_STATIONARY_BIKE
+  step ups: E_STEP_UPS
+  step up: E_STEP_UPS
+  wall sit: E_WALL_SIT
+  wall sits: E_WALL_SIT
 
 exercises:
+  # --- Early safe / mobility ---
+  - exercise_id: E_ANKLE_PUMPS
+    name: Ankle Pumps
+    allowed_in: [P_ACL_1, P_ACL_2]
+    constraints:
+      - type: pain_max
+        value: 6
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 10}]
+      - type: swelling_max
+        value: moderate
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 10}]
+
+  - exercise_id: E_QUAD_SETS
+    name: Quad Sets
+    allowed_in: [P_ACL_1, P_ACL_2]
+    constraints:
+      - type: pain_max
+        value: 6
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 11}]
+      - type: swelling_max
+        value: moderate
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 11}]
+
   - exercise_id: E_HEEL_SLIDES
     name: Heel Slides
     allowed_in: [P_ACL_1, P_ACL_2]
@@ -34,6 +73,52 @@ exercises:
         value: moderate
         evidence: [{source_id: SRC_ACL_PDF_001, page: 12}]
 
+  - exercise_id: E_SLR
+    name: Straight Leg Raise (SLR)
+    allowed_in: [P_ACL_2, P_ACL_3]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 14}]
+      - type: swelling_max
+        value: moderate
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 14}]
+
+  - exercise_id: E_STATIONARY_BIKE
+    name: Stationary Bike
+    allowed_in: [P_ACL_2, P_ACL_3]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 16}]
+      - type: swelling_max
+        value: mild
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 16}]
+
+  # --- Strength phase ---
+  - exercise_id: E_STEP_UPS
+    name: Step Ups
+    allowed_in: [P_ACL_3]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 21}]
+      - type: swelling_max
+        value: mild
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 21}]
+
+  - exercise_id: E_WALL_SIT
+    name: Wall Sit
+    allowed_in: [P_ACL_3]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 22}]
+      - type: swelling_max
+        value: mild
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 22}]
+
+  # --- Squat kept as variant-gated ---
   - exercise_id: E_SQUAT
     name: Squat
     variants:
@@ -43,6 +128,9 @@ exercises:
         constraints:
           - type: pain_max
             value: 3
+            evidence: [{source_id: SRC_ACL_PDF_001, page: 20}]
+          - type: swelling_max
+            value: mild
             evidence: [{source_id: SRC_ACL_PDF_001, page: 20}]
           - type: weight_bearing_required
             value: full

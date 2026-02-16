@@ -13,6 +13,8 @@ from wellnessbot.rules.engine import evaluate_rules
 from wellnessbot.rules.rule_types import Action
 from wellnessbot.state.infer import infer_state
 
+from wellnessbot.logging.logger import log_interaction
+
 
 def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]:
     """
@@ -82,6 +84,11 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
     planner_out = None
     if final_action == Action.RECOMMEND:
         planner_out = plan(nlu)
+    elif final_action in (Action.FORBID, Action.CLARIFY):
+        # Only suggest alternatives if we know phase_id
+        if state.phase_id:
+            from wellnessbot.planner.planner import plan_alternatives
+            planner_out = plan_alternatives(nlu.event_type, state.phase_id, top_k=5)
 
     # --- Confidence (prototype bounded aggregation) ---
     conf = 0.5
@@ -122,9 +129,13 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
         ],
     }
 
-    return {
+    result = {
         "user_text": user_text,
         "nlu": nlu.model_dump(),
         "decision": decision,
         "audit_trace": audit_trace,
     }
+
+    log_interaction(result)
+
+    return result
