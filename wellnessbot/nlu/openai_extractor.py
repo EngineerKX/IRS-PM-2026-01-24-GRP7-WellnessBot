@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from wellnessbot.nlu.schema import NLUOutput
 from wellnessbot.nlu.mock_extractor import extract_mock
+from wellnessbot.nlu.schema import NLUOutput
 
 # OpenAI is optional dependency at runtime when MOCK_NLU=0.
-# Install when needed: pip install openai
 try:
     from openai import OpenAI
 except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
-
 
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
@@ -37,11 +35,21 @@ Rules:
 """
 
 
+def apply_missing_fields_policy(nlu: NLUOutput) -> NLUOutput:
+    """
+    Deterministic missing-fields policy (do not trust the model for this).
+    """
+    missing = []
+    if nlu.weeks_since_event is None:
+        missing.append("weeks_since_event")
+    if not (nlu.requested_exercise_text or "").strip():
+        missing.append("requested_exercise_text")
+
+    nlu.missing_fields = missing
+    return nlu
+
+
 def _build_response_schema() -> Dict[str, Any]:
-    """
-    JSON schema for structured output.
-    Kept explicit to reduce model drift.
-    """
     return {
         "type": "object",
         "additionalProperties": False,
@@ -81,7 +89,12 @@ def _build_response_schema() -> Dict[str, Any]:
     }
 
 
-def _env_openai_client() -> OpenAI:
+def _env_openai_client() -> Any:
+    """
+    Return OpenAI client instance.
+    Type is Any to avoid Pylance 'variable not allowed in type expression'
+    because OpenAI may be None depending on optional import.
+    """
     if OpenAI is None:
         raise RuntimeError("openai package not installed. Run: pip install openai")
 
@@ -89,21 +102,13 @@ def _env_openai_client() -> OpenAI:
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
-    # Optional: if your corporate network requires proxy, set HTTP(S)_PROXY in env.
     return OpenAI(api_key=api_key)
 
 
 def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
-    """
-    OpenAI-based extractor.
-    MUST return structured NLUOutput.
-    """
     client = _env_openai_client()
-
     schema = _build_response_schema()
 
-    # Use Structured Outputs via response_format json_schema when available.
-    # If your installed openai SDK doesn't support this, it will throw and be caught by fallback wrapper.
     resp = client.chat.completions.create(
         model=MODEL,
         temperature=0,
@@ -123,41 +128,19 @@ def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
         raise RuntimeError("OpenAI returned empty content")
 
     data = json.loads(content)
-    # Ensure nlu_source is openai (model should do it, but we enforce)
-    data["nlu_source"] = "openai"
+    data["nlu_source"] = "openai"  # enforce
 
     nlu = NLUOutput.model_validate(data)
     nlu = apply_missing_fields_policy(nlu)
     return nlu
 
-    return NLUOutput.model_validate(data)
-
 
 def extract_with_fallback(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
     try:
-        nlu = extract_openai(user_text=user_text, timeout_s=timeout_s)
-        return nlu
+        return extract_openai(user_text=user_text, timeout_s=timeout_s)
     except Exception as e:
         print("OpenAI extraction failed:", type(e).__name__, repr(e))
         nlu = extract_mock(user_text)
         nlu.nlu_source = "mock_fallback"
-
-        nlu = extract_mock(user_text)
-        nlu.nlu_source = "mock_fallback"
         nlu = apply_missing_fields_policy(nlu)
         return nlu
-    
-def apply_missing_fields_policy(nlu: NLUOutput) -> NLUOutput:
-    missing = []
-    if nlu.weeks_since_event is None:
-        missing.append("weeks_since_event")
-    if not (nlu.requested_exercise_text or "").strip():
-        missing.append("requested_exercise_text")
-
-    # OPTIONAL (only if you want): require event_type for loaded exercises
-    # loaded = {"squats", "lunges", "leg press", "step ups", "wall sit"}
-    # if (nlu.requested_exercise_text or "").strip().lower() in loaded and nlu.event_type == "unknown":
-    #     missing.append("event_type")
-
-    nlu.missing_fields = missing
-    return nlu
