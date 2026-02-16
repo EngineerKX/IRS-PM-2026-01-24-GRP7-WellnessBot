@@ -126,6 +126,10 @@ def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
     # Ensure nlu_source is openai (model should do it, but we enforce)
     data["nlu_source"] = "openai"
 
+    nlu = NLUOutput.model_validate(data)
+    nlu = apply_missing_fields_policy(nlu)
+    return nlu
+
     return NLUOutput.model_validate(data)
 
 
@@ -137,4 +141,23 @@ def extract_with_fallback(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
         print("OpenAI extraction failed:", type(e).__name__, repr(e))
         nlu = extract_mock(user_text)
         nlu.nlu_source = "mock_fallback"
+
+        nlu = extract_mock(user_text)
+        nlu.nlu_source = "mock_fallback"
+        nlu = apply_missing_fields_policy(nlu)
         return nlu
+    
+def apply_missing_fields_policy(nlu: NLUOutput) -> NLUOutput:
+    missing = []
+    if nlu.weeks_since_event is None:
+        missing.append("weeks_since_event")
+    if not (nlu.requested_exercise_text or "").strip():
+        missing.append("requested_exercise_text")
+
+    # OPTIONAL (only if you want): require event_type for loaded exercises
+    # loaded = {"squats", "lunges", "leg press", "step ups", "wall sit"}
+    # if (nlu.requested_exercise_text or "").strip().lower() in loaded and nlu.event_type == "unknown":
+    #     missing.append("event_type")
+
+    nlu.missing_fields = missing
+    return nlu

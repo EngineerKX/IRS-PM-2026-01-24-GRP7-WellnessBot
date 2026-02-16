@@ -1,0 +1,49 @@
+protocol_id: PROTO_ACL_V1
+event_type: acl_surgery
+version: "1.0"
+
+phases:
+  - phase_id: P_ACL_1
+    name: Acute Protection
+    week_min: 0
+    week_max: 2
+  - phase_id: P_ACL_2
+    name: Early Mobility
+    week_min: 2
+    week_max: 6
+  - phase_id: P_ACL_3
+    name: Strength
+    week_min: 6
+    week_max: 12
+
+exercise_aliases:
+  squats: E_SQUAT
+  heel slides: E_HEEL_SLIDES
+  quad sets: E_QUAD_SETS
+  straight leg raise: E_SLR
+
+exercises:
+  - exercise_id: E_HEEL_SLIDES
+    name: Heel Slides
+    allowed_in: [P_ACL_1, P_ACL_2]
+    constraints:
+      - type: pain_max
+        value: 6
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 12}]
+      - type: swelling_max
+        value: moderate
+        evidence: [{source_id: SRC_ACL_PDF_001, page: 12}]
+
+  - exercise_id: E_SQUAT
+    name: Squat
+    variants:
+      - variant_id: E_SQUAT_MINI
+        name: Mini squat (0–30°)
+        allowed_in: [P_ACL_3]
+        constraints:
+          - type: pain_max
+            value: 3
+            evidence: [{source_id: SRC_ACL_PDF_001, page: 20}]
+          - type: weight_bearing_required
+            value: full
+            evidence: [{source_id: SRC_ACL_PDF_001, page: 18}]
