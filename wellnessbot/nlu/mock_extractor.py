@@ -205,6 +205,10 @@ def extract_mock(user_text: str) -> NLUOutput:
     if not req_ex:
         missing.append("requested_exercise_text")
 
+    # OPTIONAL: only require event_type if you want protocol-specific behavior
+    # if event_type == "unknown":
+    #     missing.append("event_type")
+
     return NLUOutput(
         weeks_since_event=weeks,
         event_type=event_type,

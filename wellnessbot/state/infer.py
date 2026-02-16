@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional
 
-from wellnessbot.kg.mock_kg import phase_from_weeks
+from wellnessbot.kg.kg import phase_from_weeks
 from wellnessbot.nlu.schema import NLUOutput
 
 
@@ -17,7 +17,7 @@ class InferredState:
 def infer_state(nlu: NLUOutput) -> InferredState:
     phase_id = None
     if nlu.weeks_since_event is not None:
-        phase_id = phase_from_weeks(nlu.weeks_since_event)
+        phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
 
     risk = []
     if nlu.red_flag_terms:

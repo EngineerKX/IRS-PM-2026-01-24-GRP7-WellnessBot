@@ -1,0 +1,31 @@
+protocol_id: PROTO_TKR_V1
+event_type: tkr
+version: "1.0"
+
+phases:
+  - phase_id: P_TKR_1
+    name: Early Recovery
+    week_min: 0
+    week_max: 4
+  - phase_id: P_TKR_2
+    name: Strength + Gait
+    week_min: 4
+    week_max: 12
+  - phase_id: P_TKR_3
+    name: Advanced Function
+    week_min: 12
+    week_max: 52
+
+exercise_aliases:
+  squats: E_SQUAT
+  stationary bike: E_BIKE
+  heel slides: E_HEEL_SLIDES
+
+exercises:
+  - exercise_id: E_BIKE
+    name: Stationary Bike
+    allowed_in: [P_TKR_1, P_TKR_2, P_TKR_3]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence: [{source_id: SRC_TKR_PDF_001, page: 8}]

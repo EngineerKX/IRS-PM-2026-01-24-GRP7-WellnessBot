@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from wellnessbot.kg.mock_kg import get_exercise, phase_from_weeks, resolve_exercise_id
+from wellnessbot.kg.kg import get_exercise, phase_from_weeks, resolve_exercise_id
 from wellnessbot.nlu.schema import NLUOutput
 from wellnessbot.rules.rule_types import Action, RuleResult
 
@@ -53,7 +53,7 @@ def rule_unknown_exercise_clarify(nlu: NLUOutput) -> Optional[RuleResult]:
             citations=["SRC_RULEBOOK_001#exercise_required"],
             confidence_delta=-0.2,
         )
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if ex_id is None:
         return RuleResult(
             action=Action.CLARIFY,
@@ -68,17 +68,18 @@ def rule_unknown_exercise_clarify(nlu: NLUOutput) -> Optional[RuleResult]:
 def rule_phase_forbid(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text)
+
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
 
-    phase = phase_from_weeks(nlu.weeks_since_event)
-    ex = get_exercise(ex_id)
-    if ex and phase not in ex.allowed_phases:
+    phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
+    ex = get_exercise(ex_id, nlu.event_type)
+    if ex and phase_id not in ex.allowed_phases:
         return RuleResult(
             action=Action.FORBID,
             rule_id="R_FORBID_PHASE_001",
-            rationale=f"Exercise '{ex.name}' is not allowed in phase {phase}.",
+            rationale=f"Exercise '{ex.name}' is not allowed in phase {phase_id}.",
             citations=ex.source_refs + ["SRC_RULEBOOK_001#phase_constraints"],
             confidence_delta=-0.3,
         )
@@ -88,10 +89,10 @@ def rule_phase_forbid(nlu: NLUOutput) -> Optional[RuleResult]:
 def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
-    ex = get_exercise(ex_id)
+    ex = get_exercise(ex_id, nlu.event_type)
     if not ex:
         return None
 
@@ -107,10 +108,10 @@ def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
-    ex = get_exercise(ex_id)
+    ex = get_exercise(ex_id, nlu.event_type)
     if not ex:
         return None
 
@@ -129,10 +130,10 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
     # This should fire only if nothing higher-risk blocks it; engine handles dominance.
     if nlu.weeks_since_event is None:
         return None
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
-    ex = get_exercise(ex_id)
+    ex = get_exercise(ex_id, nlu.event_type)
     if not ex:
         return None
     return RuleResult(
@@ -143,6 +144,19 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
         confidence_delta=+0.2,
     )
 
+def rule_clarify_event_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]:
+    loaded = {"squats", "lunges", "leg press", "step ups", "wall sit"}
+    if (nlu.requested_exercise_text or "").strip().lower() in loaded:
+        if nlu.event_type == "unknown":
+            return RuleResult(
+                action=Action.CLARIFY,
+                rule_id="R_CLARIFY_EVENT_001",
+                rationale="To check safety for loaded exercises, I need to know the event type (e.g., ACL surgery vs TKR vs meniscus).",
+                citations=["SRC_RULEBOOK_001#event_type_required_for_loaded"],
+                confidence_delta=-0.1,
+            )
+    return None
+
 
 RULES = [
     rule_red_flags_escalate,
@@ -152,4 +166,5 @@ RULES = [
     rule_pain_gate,
     rule_swelling_gate,
     rule_recommend_if_all_clear,
+    rule_clarify_event_type_for_loaded,
 ]
