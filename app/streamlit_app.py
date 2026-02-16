@@ -2,6 +2,7 @@ import json
 import streamlit as st
 
 from wellnessbot.pipeline.run import run_pipeline
+from wellnessbot.logging.logger import log_feedback
 
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
@@ -14,9 +15,13 @@ if "chat" not in st.session_state:
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False  # default OpenAI
 
-# NEW: pending message support (Option A)
+# pending message support (Option A)
 if "pending" not in st.session_state:
-    st.session_state.pending = None  # holds user_text waiting to be processed
+    st.session_state.pending = None
+
+# store feedback UI state per message index
+if "feedback_state" not in st.session_state:
+    st.session_state.feedback_state = {}  # {msg_index: {"thumb":..., "comment":..., "expected_action":...}}
 
 # --- Controls (top bar) ---
 with st.container():
@@ -31,6 +36,7 @@ with st.container():
         if st.button("Clear chat"):
             st.session_state.chat = []
             st.session_state.pending = None
+            st.session_state.feedback_state = {}
             st.rerun()
 
 st.divider()
@@ -46,12 +52,70 @@ for i, msg in enumerate(st.session_state.chat):
 
             result = msg.get("result")
             if result:
-                # Compact “status line”
                 action = result["decision"]["action"]
                 nlu_source = result["nlu"]["nlu_source"]
                 conf = result["decision"]["confidence"]
 
                 st.caption(f"action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`")
+
+                # --- Rating controls (NEW) ---
+                # Build a stable reference to the interaction (auditable, deterministic)
+                interaction_ref = {
+                    "audit_timestamp_utc": result["audit_trace"].get("timestamp_utc"),
+                    "user_text": result.get("user_text"),
+                    "decision_action": result["decision"].get("action"),
+                    "rule_ids": result["decision"].get("rule_ids", []),
+                }
+
+                # init feedback state for this message index
+                if i not in st.session_state.feedback_state:
+                    st.session_state.feedback_state[i] = {
+                        "thumb": None,
+                        "comment": "",
+                        "expected_action": "UNKNOWN",
+                        "submitted": False,
+                    }
+
+                fb = st.session_state.feedback_state[i]
+
+                c1, c2, c3 = st.columns([1, 1, 6])
+                with c1:
+                    if st.button("👍", key=f"thumb_up_{i}", disabled=fb["submitted"]):
+                        fb["thumb"] = "up"
+                        fb["submitted"] = True
+                        log_feedback(interaction_ref=interaction_ref, thumb="up")
+                        st.toast("Feedback saved (👍)")
+                        st.rerun()
+
+                with c2:
+                    if st.button("👎", key=f"thumb_down_{i}", disabled=fb["submitted"]):
+                        fb["thumb"] = "down"
+                        # don’t submit yet; allow comment/expected action
+                        st.rerun()
+
+                # If user chose 👎 and not submitted, show optional fields + submit
+                if fb["thumb"] == "down" and not fb["submitted"]:
+                    fb["expected_action"] = st.selectbox(
+                        "What would be the correct action?",
+                        options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                        index=0,
+                        key=f"expected_action_{i}",
+                    )
+                    fb["comment"] = st.text_input(
+                        "What went wrong? (optional)",
+                        value=fb.get("comment", ""),
+                        key=f"comment_{i}",
+                    )
+                    if st.button("Submit feedback", key=f"submit_feedback_{i}"):
+                        fb["submitted"] = True
+                        log_feedback(
+                            interaction_ref=interaction_ref,
+                            thumb="down",
+                            comment=fb["comment"] or None,
+                            expected_action=None if fb["expected_action"] == "UNKNOWN" else fb["expected_action"],
+                        )
+                        st.toast("Feedback saved (👎)")
+                        st.rerun()
 
                 with st.expander("Show NLU JSON"):
                     st.code(json.dumps(result["nlu"], indent=2), language="json")
@@ -61,34 +125,28 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# ✅ NEW: if there is pending work, compute now and replace the "Thinking..." bubble
+# --- Pending compute (Option A) ---
 if st.session_state.pending:
     pending_text = st.session_state.pending
     st.session_state.pending = None
 
-    # Run pipeline
     result = run_pipeline(user_text=pending_text, force_mock_nlu=st.session_state.mock_toggle)
 
-    # Craft assistant message (no decision changes)
     action = result["decision"]["action"]
 
-    # Select rule matching final action
     rules = result["audit_trace"].get("rules_fired", [])
     top_rule = next((r for r in rules if r.get("action") == action), None)
     if top_rule is None and rules:
         top_rule = rules[0]
     rationale = top_rule.get("rationale") if top_rule else "Decision generated."
 
-    # Rule IDs (traceability)
     rule_ids = result["decision"].get("rule_ids", [])
     rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
 
-    # Citations
     citations = result["decision"].get("citations", [])
     cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
     cite_line = f"\n\nSources: {cite_str}" if citations else ""
 
-    # Show planner recommendation / alternatives
     planner = result["audit_trace"].get("planner")
     planner_line = ""
     if planner:
@@ -110,7 +168,6 @@ if st.session_state.pending:
 
     assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
 
-    # Replace the last message if it's the placeholder; otherwise append safely
     if st.session_state.chat and st.session_state.chat[-1]["role"] == "assistant" and st.session_state.chat[-1]["result"] is None:
         st.session_state.chat[-1] = {"role": "assistant", "text": assistant_text, "result": result}
     else:
@@ -118,16 +175,11 @@ if st.session_state.pending:
 
     st.rerun()
 
-# --- Input box (chat style) ---
+# --- Input box ---
 user_text = st.chat_input("Type your message (e.g., '3 weeks after ACL surgery, pain 4/10, want squats')")
 
 if user_text:
-    # 1) add user message immediately
     st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
-
-    # 2) add placeholder assistant bubble immediately
     st.session_state.chat.append({"role": "assistant", "text": "Thinking…", "result": None})
-
-    # 3) set pending and rerun so UI updates first
     st.session_state.pending = user_text
     st.rerun()
