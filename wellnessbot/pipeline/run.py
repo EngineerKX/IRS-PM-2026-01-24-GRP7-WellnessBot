@@ -15,6 +15,10 @@ from wellnessbot.state.infer import infer_state
 
 from wellnessbot.logging.logger import log_interaction
 
+import hashlib
+
+def _make_interaction_id(user_text: str, ts: str) -> str:
+    return hashlib.sha256(f"{ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
 def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]:
     """
@@ -129,12 +133,16 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
         ],
     }
 
+
+
     result = {
         "user_text": user_text,
         "nlu": nlu.model_dump(),
         "decision": decision,
         "audit_trace": audit_trace,
     }
+
+    result["interaction_id"] = _make_interaction_id(user_text, audit_trace["timestamp_utc"])
 
     log_interaction(result)
 
