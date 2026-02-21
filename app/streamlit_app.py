@@ -1,8 +1,14 @@
 import json
+import hashlib
 import streamlit as st
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
+
+
+def make_interaction_id(user_text: str, audit_ts: str) -> str:
+    return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
+
 
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
@@ -10,7 +16,7 @@ st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. N
 
 # --- Session state ---
 if "chat" not in st.session_state:
-    st.session_state.chat = []  # list of dicts: {"role": "user"/"assistant", "text": str, "result": dict|None}
+    st.session_state.chat = []  # {"role": "user"/"assistant", "text": str, "result": dict|None}
 
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False  # default OpenAI
@@ -21,7 +27,7 @@ if "pending" not in st.session_state:
 
 # store feedback UI state per message index
 if "feedback_state" not in st.session_state:
-    st.session_state.feedback_state = {}  # {msg_index: {"thumb":..., "comment":..., "expected_action":...}}
+    st.session_state.feedback_state = {}  # {msg_index: {"thumb", "comment", "expected_action", "submitted"}}
 
 # --- Controls (top bar) ---
 with st.container():
@@ -46,82 +52,81 @@ for i, msg in enumerate(st.session_state.chat):
     if msg["role"] == "user":
         with st.chat_message("user"):
             st.write(msg["text"])
-    else:
-        with st.chat_message("assistant"):
-            st.write(msg["text"])
+        continue
 
-            result = msg.get("result")
-            if result:
-                action = result["decision"]["action"]
-                nlu_source = result["nlu"]["nlu_source"]
-                conf = result["decision"]["confidence"]
+    # assistant
+    with st.chat_message("assistant"):
+        st.write(msg["text"])
 
-                st.caption(f"action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`")
+        result = msg.get("result")
+        if not result:
+            continue
 
-                # --- Rating controls (NEW) ---
-                # Build a stable reference to the interaction (auditable, deterministic)
-                interaction_ref = {
-                    "audit_timestamp_utc": result["audit_trace"].get("timestamp_utc"),
-                    "user_text": result.get("user_text"),
-                    "decision_action": result["decision"].get("action"),
-                    "rule_ids": result["decision"].get("rule_ids", []),
-                }
+        action = result["decision"]["action"]
+        nlu_source = result["nlu"]["nlu_source"]
+        conf = result["decision"]["confidence"]
 
-                # init feedback state for this message index
-                if i not in st.session_state.feedback_state:
-                    st.session_state.feedback_state[i] = {
-                        "thumb": None,
-                        "comment": "",
-                        "expected_action": "UNKNOWN",
-                        "submitted": False,
-                    }
+        st.caption(f"action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`")
 
-                fb = st.session_state.feedback_state[i]
+        # --- Rating controls ---
+        audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
+        interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
 
-                c1, c2, c3 = st.columns([1, 1, 6])
-                with c1:
-                    if st.button("👍", key=f"thumb_up_{i}", disabled=fb["submitted"]):
-                        fb["thumb"] = "up"
-                        fb["submitted"] = True
-                        log_feedback(interaction_ref=interaction_ref, thumb="up")
-                        st.toast("Feedback saved (👍)")
-                        st.rerun()
+        # init feedback state for this message index
+        if i not in st.session_state.feedback_state:
+            st.session_state.feedback_state[i] = {
+                "thumb": None,
+                "comment": "",
+                "expected_action": "UNKNOWN",
+                "submitted": False,
+            }
 
-                with c2:
-                    if st.button("👎", key=f"thumb_down_{i}", disabled=fb["submitted"]):
-                        fb["thumb"] = "down"
-                        # don’t submit yet; allow comment/expected action
-                        st.rerun()
+        fb = st.session_state.feedback_state[i]
 
-                # If user chose 👎 and not submitted, show optional fields + submit
-                if fb["thumb"] == "down" and not fb["submitted"]:
-                    fb["expected_action"] = st.selectbox(
-                        "What would be the correct action?",
-                        options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
-                        index=0,
-                        key=f"expected_action_{i}",
-                    )
-                    fb["comment"] = st.text_input(
-                        "What went wrong? (optional)",
-                        value=fb.get("comment", ""),
-                        key=f"comment_{i}",
-                    )
-                    if st.button("Submit feedback", key=f"submit_feedback_{i}"):
-                        fb["submitted"] = True
-                        log_feedback(
-                            interaction_ref=interaction_ref,
-                            thumb="down",
-                            comment=fb["comment"] or None,
-                            expected_action=None if fb["expected_action"] == "UNKNOWN" else fb["expected_action"],
-                        )
-                        st.toast("Feedback saved (👎)")
-                        st.rerun()
+        c1, c2, _ = st.columns([1, 1, 6])
 
-                with st.expander("Show NLU JSON"):
-                    st.code(json.dumps(result["nlu"], indent=2), language="json")
+        with c1:
+            if st.button("👍", key=f"thumb_up_{i}", disabled=fb["submitted"]):
+                fb["thumb"] = "up"
+                fb["submitted"] = True
+                log_feedback(interaction_id=interaction_id, thumb="up")
+                st.toast("Feedback saved (👍)")
+                st.rerun()
 
-                with st.expander("Show Audit Trace (rules, citations, planner)"):
-                    st.code(json.dumps(result["audit_trace"], indent=2), language="json")
+        with c2:
+            if st.button("👎", key=f"thumb_down_{i}", disabled=fb["submitted"]):
+                fb["thumb"] = "down"
+                st.rerun()
+
+        # If user chose 👎 and not submitted, show optional fields + submit
+        if fb["thumb"] == "down" and not fb["submitted"]:
+            fb["expected_action"] = st.selectbox(
+                "What would be the correct action?",
+                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                index=0,
+                key=f"expected_action_{i}",
+            )
+            fb["comment"] = st.text_input(
+                "What went wrong? (optional)",
+                value=fb.get("comment", ""),
+                key=f"comment_{i}",
+            )
+            if st.button("Submit feedback", key=f"submit_feedback_{i}"):
+                fb["submitted"] = True
+                log_feedback(
+                    interaction_id=interaction_id,
+                    thumb="down",
+                    comment=fb["comment"] or None,
+                    expected_action=None if fb["expected_action"] == "UNKNOWN" else fb["expected_action"],
+                )
+                st.toast("Feedback saved (👎)")
+                st.rerun()
+
+        with st.expander("Show NLU JSON"):
+            st.code(json.dumps(result["nlu"], indent=2), language="json")
+
+        with st.expander("Show Audit Trace (rules, citations, planner)"):
+            st.code(json.dumps(result["audit_trace"], indent=2), language="json")
 
 st.divider()
 
