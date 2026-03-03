@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
+
+
+@dataclass
+class ConversationState:
+    # Core slots (keep small now)
+    event_type: str = "unknown"
+    weeks_since_event: Optional[float] = None
+    pain_score: Optional[int] = None
+    swelling_level: str = "unknown"
+    weight_bearing: str = "unknown"
+    requested_exercise_text: str = ""
+
+    # Meta
+    last_user_text: str = ""
+    turn_count: int = 0
+    history: list[Dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "event_type": self.event_type,
+            "weeks_since_event": self.weeks_since_event,
+            "pain_score": self.pain_score,
+            "swelling_level": self.swelling_level,
+            "weight_bearing": self.weight_bearing,
+            "requested_exercise_text": self.requested_exercise_text,
+            "last_user_text": self.last_user_text,
+            "turn_count": self.turn_count,
+            "history": self.history,
+        }
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ConversationState":
+        if not d:
+            return ConversationState()
+        return ConversationState(
+            event_type=d.get("event_type", "unknown"),
+            weeks_since_event=d.get("weeks_since_event"),
+            pain_score=d.get("pain_score"),
+            swelling_level=d.get("swelling_level", "unknown"),
+            weight_bearing=d.get("weight_bearing", "unknown"),
+            requested_exercise_text=d.get("requested_exercise_text", "") or "",
+            last_user_text=d.get("last_user_text", "") or "",
+            turn_count=int(d.get("turn_count", 0) or 0),
+            history=d.get("history", []) or [],
+        )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -8,93 +9,151 @@ from wellnessbot.kg.kg import get_exercise, get_protocol_for_event, resolve_exer
 from wellnessbot.nlu.mock_extractor import extract_mock
 from wellnessbot.nlu.openai_extractor import extract_with_fallback
 from wellnessbot.nlu.schema import NLUOutput
-from wellnessbot.planner.planner import plan
+from wellnessbot.planner.planner import plan, plan_alternatives
 from wellnessbot.rules.engine import evaluate_rules
 from wellnessbot.rules.rule_types import Action
 from wellnessbot.state.infer import infer_state
-
 from wellnessbot.logging.logger import log_interaction
 
-import hashlib
+# NEW: dialog imports
+from wellnessbot.dialog.state import ConversationState
+from wellnessbot.dialog.merge import merge_turn
+from wellnessbot.dialog.policy import compute_missing_slots, next_question_for_missing
+
 
 def _make_interaction_id(user_text: str, ts: str) -> str:
     return hashlib.sha256(f"{ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
-def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]:
+
+def run_pipeline(
+    user_text: str,
+    *,
+    conv_state: Dict[str, Any] | None = None,
+    force_mock_nlu: bool = False,
+) -> Dict[str, Any]:
+
     """
-    Runtime path (must follow):
-    User Text
-    -> NLU Extract (mock/OpenAI, structured output only)
-    -> State Inference (phase + risk flags + missing info)
-    -> KG Lookup (exercise constraints by phase)
-    -> Rule Engine (RECOMMEND / FORBID / CLARIFY / ESCALATE)
-    -> Planner (only if RECOMMEND)
-    -> DECISION FINALIZED (with rule_ids, citations, confidence)
-    -> Response Layer (explain + cite only; no decision changes)
+    Loop-aware pipeline:
+    1) NLU (turn-level)
+    2) Merge into conversation state
+    3) If missing slots → CLARIFY mode
+    4) Else → run deterministic decision engine
     """
 
-    # Debug prints only when explicitly enabled
-    if os.getenv("DEBUG_PIPELINE", "0") == "1":
-        print("OPENAI_API_KEY exists:", bool(os.getenv("OPENAI_API_KEY")))
-        print("MOCK_NLU:", os.getenv("MOCK_NLU"))
-        print("force_mock_nlu:", force_mock_nlu)
-
-    # Default is OpenAI unless MOCK_NLU=1 or UI forces mock
+    # --------------------------------------------
+    # Decide NLU mode
+    # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
 
-    # --- NLU ---
     if use_mock:
-        nlu: NLUOutput = extract_mock(user_text)
+        nlu_turn: NLUOutput = extract_mock(user_text)
     else:
-        nlu = extract_with_fallback(user_text=user_text, timeout_s=12.0)
+        nlu_turn = extract_with_fallback(user_text=user_text, timeout_s=12.0)
 
-    # --- State inference (no re-parsing text) ---
-    state = infer_state(nlu)
+    # --------------------------------------------
+    # Conversation memory
+    # --------------------------------------------
+    conv = ConversationState.from_dict(conv_state or {})
+    conv = merge_turn(conv, nlu_turn, user_text)
 
-    # --- KG context snapshot (audit) ---
-    protocol = get_protocol_for_event(nlu.event_type)
+    # --------------------------------------------
+    # CLARIFY MODE (deterministic)
+    # --------------------------------------------
+    missing_slots = compute_missing_slots(conv)
+    next_q = next_question_for_missing(missing_slots)
+
+    if next_q:
+        audit_trace = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "mode": "clarify",
+            "missing_slots": missing_slots,
+            "asked_slot": next_q["slot_name"],
+            "notes": ["Clarify is system-driven (not LLM)."],
+        }
+
+        result = {
+            "mode": "clarify",
+            "question": next_q["question"],
+            "slot_name": next_q["slot_name"],
+            "conv_state": conv.to_dict(),
+            "nlu_turn": nlu_turn.model_dump(),
+            "audit_trace": audit_trace,
+            "user_text": user_text,
+        }
+
+        return result
+
+    # --------------------------------------------
+    # FINAL MODE (build full NLU from conv state)
+    # --------------------------------------------
+    nlu_full = NLUOutput.model_validate(
+        {
+            "weeks_since_event": conv.weeks_since_event,
+            "event_type": conv.event_type,
+            "requested_exercise_text": conv.requested_exercise_text,
+            "pain_score": conv.pain_score,
+            "swelling_level": conv.swelling_level,
+            "weight_bearing": conv.weight_bearing,
+            "red_flag_terms": nlu_turn.red_flag_terms,
+            "negated_terms": nlu_turn.negated_terms,
+            "missing_fields": [],
+            "nlu_source": nlu_turn.nlu_source,
+        }
+    )
+
+    # --------------------------------------------
+    # State inference
+    # --------------------------------------------
+    state = infer_state(nlu_full)
+
+    # --------------------------------------------
+    # KG snapshot (audit)
+    # --------------------------------------------
+    protocol = get_protocol_for_event(nlu_full.event_type)
     protocol_id = protocol.protocol_id if protocol else None
 
-    resolved_ex_id = None
-    exercise_name = None
-    allowed_phases = None
+    resolved_ex_id = resolve_exercise_id(
+        nlu_full.requested_exercise_text, nlu_full.event_type
+    )
 
-    if (nlu.requested_exercise_text or "").strip():
-        resolved_ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
-        if resolved_ex_id:
-            ex = get_exercise(resolved_ex_id, nlu.event_type)
-            if ex:
-                exercise_name = ex.name
-                allowed_phases = ex.allowed_phases
+    ex = get_exercise(resolved_ex_id, nlu_full.event_type) if resolved_ex_id else None
 
     audit_context = {
         "user_text": user_text,
-        "nlu_source": nlu.nlu_source,
-        "event_type": nlu.event_type,
-        "weeks_since_event": nlu.weeks_since_event,
-        "requested_exercise_text": nlu.requested_exercise_text,
+        "nlu_source": nlu_full.nlu_source,
+        "event_type": nlu_full.event_type,
+        "weeks_since_event": nlu_full.weeks_since_event,
+        "requested_exercise_text": nlu_full.requested_exercise_text,
         "resolved_exercise_id": resolved_ex_id,
-        "exercise_name": exercise_name,
+        "exercise_name": ex.name if ex else None,
         "protocol_id": protocol_id,
         "phase_id": state.phase_id,
-        "exercise_allowed_phases": allowed_phases,
+        "exercise_allowed_phases": ex.allowed_phases if ex else None,
     }
 
-    # --- Rules ---
-    final_action, fired_rules = evaluate_rules(nlu)
+    # --------------------------------------------
+    # Rule engine
+    # --------------------------------------------
+    final_action, fired_rules = evaluate_rules(nlu_full)
 
-    # --- Planner (only if RECOMMEND) ---
+    # --------------------------------------------
+    # Planner
+    # --------------------------------------------
     planner_out = None
-    if final_action == Action.RECOMMEND:
-        planner_out = plan(nlu)
-    elif final_action in (Action.FORBID, Action.CLARIFY):
-        # Only suggest alternatives if we know phase_id
-        if state.phase_id:
-            from wellnessbot.planner.planner import plan_alternatives
-            planner_out = plan_alternatives(nlu.event_type, state.phase_id, top_k=5)
 
-    # --- Confidence (prototype bounded aggregation) ---
+    if final_action == Action.RECOMMEND:
+        planner_out = plan(nlu_full)
+
+    elif final_action in (Action.FORBID, Action.CLARIFY):
+        if state.phase_id:
+            planner_out = plan_alternatives(
+                nlu_full.event_type, state.phase_id, top_k=5
+            )
+
+    # --------------------------------------------
+    # Confidence (prototype)
+    # --------------------------------------------
     conf = 0.5
     for r in fired_rules:
         conf += r.confidence_delta
@@ -103,13 +162,16 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
     decision = {
         "action": final_action.value,
         "confidence": conf,
-        "rule_ids": [r.rule_id for r in fired_rules if r.action.value == final_action.value]
+        "rule_ids": [
+            r.rule_id for r in fired_rules if r.action.value == final_action.value
+        ]
         or [r.rule_id for r in fired_rules],
         "citations": sorted({c for r in fired_rules for c in r.citations}),
     }
 
     audit_trace = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "mode": "final",
         "audit_context": audit_context,
         "state": {
             "phase_id": state.phase_id,
@@ -129,20 +191,21 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
         "planner": planner_out,
         "notes": [
             "Decision brain = rules + constraints + planner. NLU provides structured fields only.",
-            "Citations are placeholders (PDF IDs/pages) until you wire real PDFs.",
         ],
     }
 
-
-
     result = {
+        "mode": "final",
         "user_text": user_text,
-        "nlu": nlu.model_dump(),
+        "nlu": nlu_full.model_dump(),
         "decision": decision,
         "audit_trace": audit_trace,
+        "conv_state": conv.to_dict(),
     }
 
-    result["interaction_id"] = _make_interaction_id(user_text, audit_trace["timestamp_utc"])
+    result["interaction_id"] = _make_interaction_id(
+        user_text, audit_trace["timestamp_utc"]
+    )
 
     log_interaction(result)
 
