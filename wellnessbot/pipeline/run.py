@@ -41,6 +41,16 @@ def run_pipeline(
     """
 
     # --------------------------------------------
+    # Conversation memory (load existing state first)
+    # --------------------------------------------
+    conv = ConversationState.from_dict(conv_state or {})
+
+    # Figure out what slot the system was expecting BEFORE this turn
+    prior_missing_slots = compute_missing_slots(conv)
+    prior_next_q = next_question_for_missing(prior_missing_slots)
+    expected_slot = prior_next_q["slot_name"] if prior_next_q else None
+
+    # --------------------------------------------
     # Decide NLU mode
     # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
@@ -49,12 +59,15 @@ def run_pipeline(
     if use_mock:
         nlu_turn: NLUOutput = extract_mock(user_text)
     else:
-        nlu_turn = extract_with_fallback(user_text=user_text, timeout_s=12.0)
+        nlu_turn = extract_with_fallback(
+            user_text=user_text,
+            expected_slot=expected_slot,
+            timeout_s=12.0,
+        )
 
     # --------------------------------------------
-    # Conversation memory
+    # Merge current turn into conversation state
     # --------------------------------------------
-    conv = ConversationState.from_dict(conv_state or {})
     conv = merge_turn(conv, nlu_turn, user_text)
 
     # --------------------------------------------
@@ -87,9 +100,20 @@ def run_pipeline(
     # --------------------------------------------
     # FINAL MODE (build full NLU from conv state)
     # --------------------------------------------
+    weeks_since_event = conv.weeks_since_event
+
+    if weeks_since_event is None and (conv.surgery_date or "").strip():
+        try:
+            dt = datetime.strptime(conv.surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+        except Exception:
+            pass
+
     nlu_full = NLUOutput.model_validate(
         {
-            "weeks_since_event": conv.weeks_since_event,
+            "weeks_since_event": weeks_since_event,
             "event_type": conv.event_type,
             "requested_exercise_text": conv.requested_exercise_text,
             "pain_score": conv.pain_score,
@@ -143,7 +167,7 @@ def run_pipeline(
     planner_out = None
 
     if final_action == Action.RECOMMEND:
-        planner_out = plan(nlu_full)
+        planner_out = plan(nlu_full, state.phase_id)
 
     elif final_action in (Action.FORBID, Action.CLARIFY):
         if state.phase_id:

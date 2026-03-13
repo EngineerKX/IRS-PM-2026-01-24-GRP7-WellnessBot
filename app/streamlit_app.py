@@ -6,17 +6,95 @@ from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
 
 
+
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
+def build_welcome_message(profile: dict | None = None) -> dict:
+    profile = profile or {}
 
+    event_type = profile.get("event_type", "unknown")
+    surgery_date = profile.get("surgery_date", "")
+
+    if event_type in (None, "", "unknown"):
+        slot_name = "event_type"
+        question = "What surgery or injury did you have? (ACL surgery / TKR / meniscus / sprain)"
+    elif not surgery_date:
+        slot_name = "surgery_date"
+        question = "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) or how many weeks/days ago."
+    else:
+        slot_name = "pain_score"
+        question = "What is your pain level right now on a scale of 0–10? You can reply with just a number."
+
+    return {
+        "role": "assistant",
+        "text": (
+            "👋 Welcome to the Knee Rehab Decision Support assistant.\n\n"
+            "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
+            f"{question}"
+        ),
+        "result": {
+            "mode": "clarify",
+            "slot_name": slot_name,
+            "nlu_turn": {},
+            "audit_trace": {
+                "mode": "clarify",
+                "asked_slot": slot_name,
+                "notes": ["Initial system greeting and first question."],
+            },
+        },
+    }
+
+WELCOME_MESSAGE = build_welcome_message()
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
 
+# --- Sidebar: Core Profile ---
+st.sidebar.header("Core Profile")
+
+profile = st.session_state.get("conv_state", {})
+
+def _show_profile_value(v):
+    if v in (None, "", "unknown", []):
+        return "—"
+    return v
+
+st.sidebar.write(f"**Event type:** {_show_profile_value(profile.get('event_type'))}")
+st.sidebar.write(f"**Surgery date:** {_show_profile_value(profile.get('surgery_date'))}")
+
+# Optional equipment/tools selection
+if "equipment_available" not in st.session_state:
+    st.session_state.equipment_available = profile.get("equipment_available", []) or []
+
+tool_options = [
+    "chair",
+    "resistance_band",
+    "towel",
+    "step",
+]
+
+selected_tools = []
+st.sidebar.markdown("**Available tools/equipment**")
+for tool in tool_options:
+    checked = st.sidebar.checkbox(
+        tool.replace("_", " ").title(),
+        value=tool in st.session_state.equipment_available,
+        key=f"tool_{tool}",
+    )
+    if checked:
+        selected_tools.append(tool)
+
+st.session_state.equipment_available = selected_tools
+
+# keep conv_state updated for downstream use
+if "conv_state" not in st.session_state:
+    st.session_state.conv_state = {}
+st.session_state.conv_state["equipment_available"] = selected_tools
+
 # --- Session state ---
 if "chat" not in st.session_state:
-    st.session_state.chat = []  # {"role": "user"/"assistant", "text": str, "result": dict|None}
+    st.session_state.chat = [build_welcome_message(st.session_state.get("conv_state", {}))]
 
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False  # default OpenAI
@@ -46,17 +124,28 @@ with st.container():
 
     with col2:
         if st.button("End conversation / Restart"):
-            st.session_state.chat = []
+            preserved_profile = {
+                "event_type": st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
+                "equipment_available": st.session_state.equipment_available,
+            }
+            st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.pending = None
             st.session_state.feedback_state = {}
-            st.session_state.conv_state = {}  # ✅ clears loop memory
+            st.session_state.conv_state = preserved_profile
             st.rerun()
 
     with col3:
         if st.button("Clear chat only"):
-            st.session_state.chat = []
+            preserved_profile = {
+                "event_type": st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
+                "equipment_available": st.session_state.equipment_available,
+            }
+            st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.pending = None
             st.session_state.feedback_state = {}
+            st.session_state.conv_state = preserved_profile
             st.rerun()
 
 st.divider()
@@ -211,10 +300,8 @@ if st.session_state.pending:
                 ex_name = planner.get("exercise_name") or planner.get("exercise_id")
                 dose = planner.get("dose", {})
                 stop = planner.get("stop_conditions", [])
-                planner_line = (
-                    f"\n\n**Recommended exercise:** {ex_name}"
-                    f"\n\nDose: {dose.get('sets')} sets × {dose.get('reps')} reps, {dose.get('frequency_per_day')}×/day"
-                )
+
+                planner_line = f"\n\n**Recommended exercise:** {ex_name}"
                 if stop:
                     planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
 
@@ -229,7 +316,7 @@ if st.session_state.pending:
     st.rerun()
 
 # --- Input box ---
-user_text = st.chat_input("Type your message (e.g., '3 weeks after ACL surgery, pain 4/10, want squats')")
+user_text = st.chat_input("Type your message (e.g., '3 weeks after meniscus surgery, pain 4/10, swelling mild')")
 
 if user_text:
     st.session_state.chat.append({"role": "user", "text": user_text, "result": None})

@@ -1,0 +1,411 @@
+protocol_id: PROTO_KNEE_ARTHRO_V1
+event_type: meniscus
+version: "1.0"
+
+phases:
+  - phase_id: P_KNEE_01
+    name: Early Phase
+    week_min: 0
+    week_max: 2
+
+  - phase_id: P_KNEE_02
+    name: Intermediate Phase
+    week_min: 2
+    week_max: 6
+
+  - phase_id: P_KNEE_03
+    name: Late Phase
+    week_min: 6
+    week_max: 9
+
+  - phase_id: P_KNEE_04
+    name: Transitional Phase
+    week_min: 9
+    week_max: 12
+
+  - phase_id: P_KNEE_05
+    name: Return to Sport
+    week_min: 12
+    week_max: 20
+
+exercise_aliases:
+
+    ankle pumps: E_ANKLE_PUMPS
+    ankle pumps circulation: E_ANKLE_PUMPS_CIRCULATION
+
+    knee locking: E_KNEE_LOCKING
+
+    quadriceps setting: E_QUADRICEPS_SETTING
+
+    straight leg raises: E_STRAIGHT_LEG_RAISE
+
+    flexion straight leg raises: E_FLEXION_STRAIGHT_LEG_RAISE
+
+    heel slides lying: E_HEEL_SLIDES_LYING
+    heel slides sitting: E_HEEL_SLIDES_SITTING
+
+    knee bending: E_KNEE_BENDING
+
+    seated passive knee flexion: E_PASSIVE_KNEE_FLEXION_SEATED
+
+    terminal knee extension: E_TERMINAL_KNEE_EXTENSION
+    tke: E_TERMINAL_KNEE_EXTENSION
+
+    short arc lift: E_SHORT_ARC_LIFT
+
+    hip abduction: E_HIP_ABDUCTION
+    hip abduction band: E_HIP_ABDUCTION_BAND
+
+    calf raises: E_CALF_RAISES
+
+    standing toe raise: E_TOE_RAISES
+
+    standing hamstring curl: E_STANDING_HAMSTRING_CURL
+
+    hamstring curls: E_HAMSTRING_CURL
+
+    partial squat with chair: E_PARTIAL_SQUAT_CHAIR
+
+    mini squat: E_MINI_SQUAT
+
+
+exercises:
+  - exercise_id: E_ANKLE_PUMPS
+    name: Ankle pumps
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 6
+        evidence:
+          - {source_id: E_ANKLE_PUMPS_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_001, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_ANKLE_PUMPS_CHUNK_001, page: 0}
+
+  - exercise_id: E_ANKLE_PUMPS_CIRCULATION
+    name: Ankle pumps
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 6
+        evidence:
+          - {source_id: E_ANKLE_PUMPS_CIRCULATION_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_004, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_ANKLE_PUMPS_CIRCULATION_CHUNK_002, page: 0}
+
+  - exercise_id: E_KNEE_LOCKING
+    name: Knee locking
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_KNEE_LOCKING_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: P_KNEE_01_CHUNK_001, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_KNEE_LOCKING_CHUNK_001, page: 0}
+
+  - exercise_id: E_QUADRICEPS_SETTING
+    name: Quadriceps setting
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_QUADRICEPS_SETTING_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_QUADRICEPS_SETTING_CHUNK_002, page: 0}
+
+  - exercise_id: E_STRAIGHT_LEG_RAISE
+    name: Straight leg raises (lying)
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_STRAIGHT_LEG_RAISE_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: P_KNEE_01_CHUNK_001, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_STRAIGHT_LEG_RAISE_CHUNK_001, page: 0}
+
+  - exercise_id: E_FLEXION_STRAIGHT_LEG_RAISE
+    name: Flexion straight leg raises
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_FLEXION_STRAIGHT_LEG_RAISE_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_004, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_FLEXION_STRAIGHT_LEG_RAISE_CHUNK_002, page: 0}
+
+  - exercise_id: E_HEEL_SLIDES_LYING
+    name: Heel slides (lying)
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_HEEL_SLIDES_LYING_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_HEEL_SLIDES_LYING_CHUNK_001, page: 0}
+
+  - exercise_id: E_KNEE_BENDING
+    name: Knee bending
+    allowed_in: [P_KNEE_01]
+    constraints:
+      - type: pain_max
+        value: 5
+        evidence:
+          - {source_id: E_KNEE_BENDING_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: moderate
+        evidence:
+          - {source_id: P_KNEE_01_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: none
+        evidence:
+          - {source_id: E_KNEE_BENDING_CHUNK_001, page: 0}
+
+  - exercise_id: E_HEEL_SLIDES_SITTING
+    name: Heel slides (sitting)
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_HEEL_SLIDES_SITTING_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_HEEL_SLIDES_SITTING_CHUNK_001, page: 0}
+
+  - exercise_id: E_PASSIVE_KNEE_FLEXION_SEATED
+    name: Seated passive knee flexion
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_PASSIVE_KNEE_FLEXION_SEATED_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_PASSIVE_KNEE_FLEXION_SEATED_CHUNK_002, page: 0}
+
+  - exercise_id: E_TERMINAL_KNEE_EXTENSION
+    name: Terminal Knee Extension, Supine
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_TERMINAL_KNEE_EXTENSION_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: C_SWELL_01_CHUNK_003, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_TERMINAL_KNEE_EXTENSION_CHUNK_001, page: 0}
+
+  - exercise_id: E_SHORT_ARC_LIFT
+    name: Short Arc Lift
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_SHORT_ARC_LIFT_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_SHORT_ARC_LIFT_CHUNK_002, page: 0}
+
+  - exercise_id: E_HIP_ABDUCTION
+    name: Hip Abduction
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
+
+  - exercise_id: E_HIP_ABDUCTION_BAND
+    name: Hip Abduction
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 4
+        evidence:
+          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: partial
+        evidence:
+          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
+
+  - exercise_id: E_CALF_RAISES
+    name: Calf raises
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+
+  - exercise_id: E_TOE_RAISES
+    name: Standing toe raise
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: E_TOE_RAISES_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: E_TOE_RAISES_CHUNK_001, page: 0}
+
+  - exercise_id: E_STANDING_HAMSTRING_CURL
+    name: Standing hamstring curl
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: E_STANDING_HAMSTRING_CURL_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: E_STANDING_HAMSTRING_CURL_CHUNK_001, page: 0}
+
+  - exercise_id: E_HAMSTRING_CURL
+    name: Hamstring curls
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: E_HAMSTRING_CURL_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: E_HAMSTRING_CURL_CHUNK_002, page: 0}
+
+  - exercise_id: E_PARTIAL_SQUAT_CHAIR
+    name: Partial Squat with chair
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: E_PARTIAL_SQUAT_CHAIR_CHUNK_001, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: E_PARTIAL_SQUAT_CHAIR_CHUNK_001, page: 0}
+
+  - exercise_id: E_MINI_SQUAT
+    name: Mini squat
+    allowed_in: [P_KNEE_02]
+    constraints:
+      - type: pain_max
+        value: 3
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: swelling_max
+        value: mild
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+      - type: weight_bearing
+        value: full
+        evidence:
+          - {source_id: P_KNEE_02_CHUNK_002, page: 0}

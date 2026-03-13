@@ -6,13 +6,17 @@ from typing import Optional, Dict, Any
 
 @dataclass
 class ConversationState:
-    # Core slots (keep small now)
+    # Core slots
     event_type: str = "unknown"
+    surgery_date: str = ""
     weeks_since_event: Optional[float] = None
     pain_score: Optional[int] = None
     swelling_level: str = "unknown"
     weight_bearing: str = "unknown"
     requested_exercise_text: str = ""
+
+    # Optional profile/preferences
+    equipment_available: list[str] = field(default_factory=list)
 
     # Meta
     last_user_text: str = ""
@@ -30,6 +34,8 @@ class ConversationState:
             "last_user_text": self.last_user_text,
             "turn_count": self.turn_count,
             "history": self.history,
+            "surgery_date": self.surgery_date,
+            "equipment_available": self.equipment_available,
         }
 
     @staticmethod
@@ -46,4 +52,6 @@ class ConversationState:
             last_user_text=d.get("last_user_text", "") or "",
             turn_count=int(d.get("turn_count", 0) or 0),
             history=d.get("history", []) or [],
+            surgery_date=d.get("surgery_date", "") or "",
+            equipment_available=d.get("equipment_available", []) or [],
         )

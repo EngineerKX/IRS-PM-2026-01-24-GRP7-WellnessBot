@@ -13,6 +13,7 @@ NLUSource = Literal["mock", "openai", "mock_fallback"]
 class NLUOutput(BaseModel):
     weeks_since_event: Optional[float] = Field(default=None, description="Weeks since injury/surgery/event")
     event_type: EventType = "unknown"
+    surgery_date: str = ""
     requested_exercise_text: str = ""
     pain_score: Optional[int] = Field(default=None, ge=0, le=10)
     swelling_level: SwellingLevel = "unknown"

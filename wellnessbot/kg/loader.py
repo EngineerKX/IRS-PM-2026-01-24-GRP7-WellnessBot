@@ -7,6 +7,14 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 
+_WEIGHT_MAP = {
+    "non_weight": "none",
+    "none": "none",
+    "partial": "partial",
+    "full": "full",
+}
+
+
 @dataclass(frozen=True)
 class Evidence:
     source_id: str

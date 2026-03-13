@@ -20,6 +20,7 @@ class CompatibleExercise:
     allowed_phases: List[str]
     min_pain_max: int
     swelling_allowed: List[str]
+    weight_bearing_allowed: List[str]
     source_refs: List[str]
 
 
@@ -135,6 +136,33 @@ def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExerci
     else:
         swelling_allowed = swelling_levels  # no swelling constraint
 
+    
+    # INSERT BELOW swelling logic
+
+    wb_vals: List[str] = []
+    ev_wb_all: List[str] = []
+
+    wval, wev = _extract_constraint_from_constraint_list(
+        getattr(ex, "constraints", []) or [], "weight_bearing"
+    )
+
+    if wval is not None:
+        wb_vals.append(str(wval))
+        ev_wb_all.extend(wev)
+
+    for v in getattr(ex, "variants", []) or []:
+        vwval, vwev = _extract_constraint_from_constraint_list(
+            getattr(v, "constraints", []) or [], "weight_bearing"
+        )
+        if vwval is not None:
+            wb_vals.append(str(vwval))
+            ev_wb_all.extend(vwev)
+
+    if wb_vals:
+        weight_bearing_allowed = list(set(wb_vals))
+    else:
+        weight_bearing_allowed = ["none", "partial", "full"]
+
     # 3) Evidence refs: union, dedup, stable order
     source_refs = sorted(set(ev_pain_all + ev_sw_all))
 
@@ -144,6 +172,7 @@ def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExerci
         allowed_phases=allowed_phases,
         min_pain_max=min_pain_max,
         swelling_allowed=swelling_allowed,
+        weight_bearing_allowed=weight_bearing_allowed,
         source_refs=source_refs,
     )
 

@@ -8,14 +8,11 @@ from wellnessbot.dialog.questions import QUESTION_BANK, REQUIRED_ORDER
 def compute_missing_slots(conv: ConversationState) -> List[str]:
     missing: List[str] = []
 
-    if conv.weeks_since_event is None:
-        missing.append("weeks_since_event")
+    if not (conv.surgery_date or "").strip() and conv.weeks_since_event is None:
+        missing.append("surgery_date")
 
     if (conv.event_type or "unknown") == "unknown":
         missing.append("event_type")
-
-    if not (conv.requested_exercise_text or "").strip():
-        missing.append("requested_exercise_text")
 
     if conv.pain_score is None:
         missing.append("pain_score")

@@ -12,6 +12,11 @@ def merge_turn(conv: ConversationState, nlu_turn: NLUOutput, user_text: str) -> 
     if (nlu_turn.event_type or "unknown") != "unknown":
         conv.event_type = nlu_turn.event_type
 
+    if (getattr(nlu_turn, "surgery_date", "") or "").strip():
+        conv.surgery_date = nlu_turn.surgery_date.strip()
+
+
+
     if nlu_turn.weeks_since_event is not None:
         conv.weeks_since_event = float(nlu_turn.weeks_since_event)
 
