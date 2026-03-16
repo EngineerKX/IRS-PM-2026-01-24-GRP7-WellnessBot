@@ -72,6 +72,17 @@ tool_options = [
     "resistance_band",
     "towel",
     "step",
+    "socks",
+    "sliding_board",
+    "strap",
+    "stool",
+    "wall",
+    "table",
+    "stationary_bicycle",
+    "wobble_board",
+    "thick_carpet",
+    "foam_block",
+    "camping_mattress",
 ]
 
 selected_tools = []
@@ -298,7 +309,6 @@ if st.session_state.pending:
                     planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
             else:
                 ex_name = planner.get("exercise_name") or planner.get("exercise_id")
-                dose = planner.get("dose", {})
                 stop = planner.get("stop_conditions", [])
 
                 planner_line = f"\n\n**Recommended exercise:** {ex_name}"

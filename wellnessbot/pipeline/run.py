@@ -71,6 +71,47 @@ def run_pipeline(
     conv = merge_turn(conv, nlu_turn, user_text)
 
     # --------------------------------------------
+    # EARLY RED FLAG CHECK (before clarify)
+    # --------------------------------------------
+    from wellnessbot.rules.ruleset import rule_red_flags_escalate
+
+    rr = rule_red_flags_escalate(nlu_turn)
+
+    if rr is not None:
+        audit_trace = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "mode": "final",
+            "notes": ["Early escalation due to red flag before clarification."],
+        }
+
+        result = {
+            "mode": "final",
+            "user_text": user_text,
+            "nlu": nlu_turn.model_dump(),
+            "decision": {
+                "action": rr.action.value,
+                "confidence": 0.9,
+                "rule_ids": [rr.rule_id],
+                "citations": rr.citations,
+            },
+            "audit_trace": {
+                **audit_trace,
+                "rules_fired": [
+                    {
+                        "rule_id": rr.rule_id,
+                        "action": rr.action.value,
+                        "rationale": rr.rationale,
+                        "citations": rr.citations,
+                        "confidence_delta": rr.confidence_delta,
+                    }
+                ],
+            },
+            "conv_state": conv.to_dict(),
+        }
+
+        return result
+
+    # --------------------------------------------
     # CLARIFY MODE (deterministic)
     # --------------------------------------------
     missing_slots = compute_missing_slots(conv)
@@ -154,6 +195,8 @@ def run_pipeline(
         "protocol_id": protocol_id,
         "phase_id": state.phase_id,
         "exercise_allowed_phases": ex.allowed_phases if ex else None,
+        "equipment_available": conv.equipment_available,
+        "exercise_history_size": len(conv.exercise_history),
     }
 
     # --------------------------------------------
@@ -167,13 +210,49 @@ def run_pipeline(
     planner_out = None
 
     if final_action == Action.RECOMMEND:
-        planner_out = plan(nlu_full, state.phase_id)
+        if state.phase_id:
+            planner_out = plan(
+                nlu_full,
+                state.phase_id,
+                equipment_available=conv.equipment_available,
+                exercise_history=conv.exercise_history,
+            )
+        else:
+            planner_out = {"plan": None, "notes": ["No phase available for planning."]}
 
     elif final_action in (Action.FORBID, Action.CLARIFY):
         if state.phase_id:
             planner_out = plan_alternatives(
                 nlu_full.event_type, state.phase_id, top_k=5
             )
+
+    elif final_action == Action.SUPPORTIVE_CARE:
+        supportive_text = " ".join(r.rationale.lower() for r in fired_rules)
+
+        # If the rule says to stop exercise, do not show alternatives yet
+        if "stop_exercise" in supportive_text:
+            planner_out = None
+
+        # If the rule says downgrade exercise, show safer options
+        elif "exercise_downgrade" in supportive_text:
+            if state.phase_id:
+                planner_out = plan_alternatives(
+                    nlu_full.event_type, state.phase_id, top_k=5
+                )
+    
+    # --------------------------------------------
+    # Update exercise history after recommendation
+    # --------------------------------------------
+    if final_action == Action.RECOMMEND and planner_out and planner_out.get("exercise_id"):
+        conv.exercise_history.append(
+            {
+                "exercise_id": planner_out["exercise_id"],
+                "turn": conv.turn_count,
+            }
+        )
+
+        # keep only recent history to avoid unbounded growth
+        conv.exercise_history = conv.exercise_history[-5:]
 
     # --------------------------------------------
     # Confidence (prototype)

@@ -1,22 +1,95 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Optional
 
-from wellnessbot.kg.kg import get_exercise, phase_from_weeks, resolve_exercise_id
+from wellnessbot.kg.kg import (
+    get_exercise,
+    get_redflag_policies,
+    get_selfcare_actions,
+    phase_from_weeks,
+    resolve_exercise_id,
+)
 from wellnessbot.nlu.schema import NLUOutput
 from wellnessbot.rules.rule_types import Action, RuleResult
 
 
-# Dominance: ESCALATE > FORBID > CLARIFY > RECOMMEND
+# Dominance: ESCALATE > FORBID > SUPPORTIVE CARE > CLARIFY > RECOMMEND
 DOMINANCE = {
-    Action.ESCALATE: 4,
-    Action.FORBID: 3,
+    Action.ESCALATE: 5,
+    Action.FORBID: 4,
+    Action.SUPPORTIVE_CARE: 3,
     Action.CLARIFY: 2,
     Action.RECOMMEND: 1,
 }
 
-# Red flags for prototype
-RED_FLAG_DOMINANT = {"fever", "locking", "cannot bear weight", "chest pain", "shortness of breath", "wound drainage", "pus"}
+
+def _current_phase(nlu: NLUOutput) -> Optional[str]:
+    if nlu.weeks_since_event is None:
+        return None
+    return phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
+
+
+def _match_redflag_policy(nlu: NLUOutput):
+    phase_id = _current_phase(nlu)
+    if not phase_id:
+        return None
+
+    policies = get_redflag_policies(nlu.event_type, phase_id)
+
+    # fever
+    if "fever" in (nlu.red_flag_terms or []):
+        for p in policies:
+            if p.symptom == "fever":
+                return p
+
+    # excessive bleeding / wound drainage
+    if any(t in (nlu.red_flag_terms or []) for t in ["wound drainage", "pus"]):
+        for p in policies:
+            if p.symptom == "excessive_bleeding_or_wound_drainage":
+                return p
+
+    # pain severity
+    if nlu.pain_score is not None:
+        for p in policies:
+            if p.symptom == "pain" and str(nlu.pain_score) == str(p.severity):
+                return p
+
+    # swelling severity
+    if nlu.swelling_level in {"severe"}:
+        # current schema is text-based, map severe -> 3
+        for p in policies:
+            if p.symptom == "swelling" and str(p.severity) == "3":
+                return p
+
+    return None
+
+
+def _match_selfcare_actions(nlu: NLUOutput):
+    phase_id = _current_phase(nlu)
+    if not phase_id:
+        return []
+
+    actions = get_selfcare_actions(nlu.event_type, phase_id)
+
+    matched = []
+
+    # swelling mapping
+    swelling_map = {
+        "none": "none",
+        "mild": "1",
+        "moderate": "2",
+        "severe": "3",
+        "unknown": "unknown",
+    }
+    swell_level = swelling_map.get(nlu.swelling_level, "unknown")
+
+    for a in actions:
+        if a.swell_level == "any":
+            matched.append(a)
+        elif str(a.swell_level).lower() == str(swell_level).lower():
+            matched.append(a)
+
+    return matched
 
 
 def rule_missing_weeks(nlu: NLUOutput) -> Optional[RuleResult]:
@@ -32,23 +105,55 @@ def rule_missing_weeks(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
-    hits = [t for t in nlu.red_flag_terms if t in RED_FLAG_DOMINANT]
-    if hits:
+    policy = _match_redflag_policy(nlu)
+    if not policy:
+        return None
+
+    if policy.action == "escalate":
         return RuleResult(
             action=Action.ESCALATE,
-            rule_id="R_ESCALATE_REDFLAG_001",
-            rationale=f"Red-flag symptoms present ({', '.join(hits)}). Escalate to clinician.",
-            citations=["SRC_PDF_999#red_flags"],
+            rule_id=f"R_ESCALATE_{policy.redflag_id}",
+            rationale=policy.message or "Red-flag symptoms detected. Escalate to clinician.",
+            citations=["SRC_RULEBOOK_001#redflag_policy"],
             confidence_delta=-0.6,
         )
+
+    # supportive sequence is kept as FORBID for now, so planner can still show alternatives
+    if policy.action == "supportive_sequence":
+        steps = ", ".join(policy.action_steps or [])
+        return RuleResult(
+            action=Action.SUPPORTIVE_CARE,
+            rule_id=f"R_SUPPORTIVE_{policy.redflag_id}",
+            rationale=f"Supportive care required before exercise: {steps}.",
+            citations=["SRC_RULEBOOK_001#supportive_sequence"],
+            confidence_delta=-0.3,
+        )
+
     return None
 
 
+def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
+    actions = _match_selfcare_actions(nlu)
+    if not actions:
+        return None
+
+    # only surface self-care if not already in severe red-flag territory
+    texts = []
+    for a in actions:
+        texts.append(
+            f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
+        )
+
+    return RuleResult(
+        action=Action.RECOMMEND,
+        rule_id="R_SELFCARE_GUIDANCE_001",
+        rationale="Self-care guidance: " + "; ".join(texts),
+        citations=["SRC_RULEBOOK_001#selfcare_actions"],
+        confidence_delta=+0.05,
+    )
+
+
 def rule_unknown_exercise_clarify(nlu: NLUOutput) -> Optional[RuleResult]:
-    """
-    Exercise name is optional in the new design.
-    Only clarify if the user explicitly provided an exercise text that cannot be resolved.
-    """
     if not (nlu.requested_exercise_text or "").strip():
         return None
 
@@ -88,9 +193,11 @@ def rule_phase_forbid(nlu: NLUOutput) -> Optional[RuleResult]:
 def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
+
     ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
+
     ex = get_exercise(ex_id, nlu.event_type)
     if not ex:
         return None
@@ -110,6 +217,7 @@ def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
     if not ex_id:
         return None
+
     ex = get_exercise(ex_id, nlu.event_type)
     if not ex:
         return None
@@ -124,7 +232,6 @@ def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
         )
     return None
 
-# INSERT BELOW rule_swelling_gate
 
 def rule_weight_bearing_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
@@ -143,12 +250,10 @@ def rule_weight_bearing_gate(nlu: NLUOutput) -> Optional[RuleResult]:
             citations=ex.source_refs + ["SRC_RULEBOOK_001#weight_bearing_gate"],
             confidence_delta=-0.2,
         )
-
     return None
 
 
 def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
-    # In the new design, recommend can proceed without a user-specified exercise.
     if nlu.weeks_since_event is None:
         return None
 
@@ -177,6 +282,7 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
         confidence_delta=+0.2,
     )
 
+
 def rule_clarify_event_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]:
     loaded = {"squats", "lunges", "leg press", "step ups", "wall sit"}
     req = (nlu.requested_exercise_text or "").strip().lower()
@@ -199,6 +305,7 @@ RULES = [
     rule_pain_gate,
     rule_swelling_gate,
     rule_weight_bearing_gate,
+    rule_selfcare_guidance,
     rule_recommend_if_all_clear,
     rule_clarify_event_type_for_loaded,
 ]

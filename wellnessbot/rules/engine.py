@@ -19,7 +19,7 @@ def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
             continue
         fired.append(rr)
 
-    # If any ESCALATE/FORBID/CLARIFY fired, we finalize without producing RECOMMEND noise
+    # If any ESCALATE/FORBID/SUPPORTIVE_CARE/CLARIFY fired, finalize without RECOMMEND noise
     if fired:
         final = sorted(fired, key=lambda r: DOMINANCE[r.action], reverse=True)[0].action
         return final, fired

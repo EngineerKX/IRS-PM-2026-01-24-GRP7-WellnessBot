@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 @dataclass
@@ -16,12 +16,15 @@ class ConversationState:
     requested_exercise_text: str = ""
 
     # Optional profile/preferences
-    equipment_available: list[str] = field(default_factory=list)
+    equipment_available: List[str] = field(default_factory=list)
+
+    # NEW: exercise history for planner
+    exercise_history: List[Dict[str, Any]] = field(default_factory=list)
 
     # Meta
     last_user_text: str = ""
     turn_count: int = 0
-    history: list[Dict[str, Any]] = field(default_factory=list)
+    history: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -36,12 +39,14 @@ class ConversationState:
             "history": self.history,
             "surgery_date": self.surgery_date,
             "equipment_available": self.equipment_available,
+            "exercise_history": self.exercise_history,
         }
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ConversationState":
         if not d:
             return ConversationState()
+
         return ConversationState(
             event_type=d.get("event_type", "unknown"),
             weeks_since_event=d.get("weeks_since_event"),
@@ -54,4 +59,5 @@ class ConversationState:
             history=d.get("history", []) or [],
             surgery_date=d.get("surgery_date", "") or "",
             equipment_available=d.get("equipment_available", []) or [],
+            exercise_history=d.get("exercise_history", []) or [],
         )

@@ -1,411 +1,617 @@
-protocol_id: PROTO_KNEE_ARTHRO_V1
+protocol_id: PROTO_KNEE_ARTHRO_V3
 event_type: meniscus
-version: "1.0"
+version: "3.0"
+
+procedure:
+  procedure_id: PROC_KNEE_ARTHRO
+  procedure_name: Post-arthroscopic knee surgery
+  body_region: knee
 
 phases:
-  - phase_id: P_KNEE_01
-    name: Early Phase
+  - phase_id: P1_1
+    name: Initial
     week_min: 0
     week_max: 2
+    source_id: S1
+    phase_goal:
+      - Protect repair
+      - Reduce swelling, minimize pain
+      - Restore patellar mobility
+      - Restore full extension
+      - Flexion <90 degrees
+      - Minimize arthrogenic muscle inhibition, re-establish quad control, regain full active extension
 
-  - phase_id: P_KNEE_02
-    name: Intermediate Phase
+  - phase_id: P1_2
+    name: Early
     week_min: 2
+    week_max: 4
+    source_id: S1
+    phase_goal:
+      - Protect repair
+      - Reduce swelling, minimize pain
+      - Restore patellar mobility
+      - Restore full extension
+      - Flexion <90 degrees
+      - Minimize arthrogenic muscle inhibition, re-establish quad control, regain full active extension
+
+  - phase_id: P2
+    name: Intermediate
+    week_min: 4
     week_max: 6
+    source_id: S1
+    phase_goal:
+      - Continue to protect repair
+      - Reduce pain, minimize swelling
+      - Maintain full extension
+      - Flexion >90 degrees unless further direction from MD
 
-  - phase_id: P_KNEE_03
-    name: Late Phase
+  - phase_id: P3
+    name: Late
     week_min: 6
-    week_max: 9
+    week_max: 10
+    source_id: S1
+    phase_goal:
+      - Continue to protect repair
+      - Maintain full extension
+      - Normalize gait
+      - Flexion within 10 degrees of contralateral side
+      - Safely progress strengthening
+      - Promote proper movement patterns
+      - Avoid post exercise pain/swelling
 
-  - phase_id: P_KNEE_04
-    name: Transitional Phase
-    week_min: 9
-    week_max: 12
+  - phase_id: P4
+    name: Transitional
+    week_min: 10
+    week_max: 13
+    source_id: S1
+    phase_goal:
+      - Maintain full ROM
+      - Safely progress strengthening
+      - Promote proper movement patterns
+      - Avoid post exercise pain/swelling
 
-  - phase_id: P_KNEE_05
-    name: Return to Sport
-    week_min: 12
-    week_max: 20
+  - phase_id: P5
+    name: Return to sport
+    week_min: 13
+    week_max: 21
+    source_id: S1
+    phase_goal:
+      - Safely progress strengthening
+      - Safely initiate sports specific training program
+      - Promote proper movement patterns
+      - Avoid post exercise pain/swelling
 
 exercise_aliases:
+  ankle pumps: P1_1_E1
+  heel slides: P1_1_E2
+  seated passive knee flexion: P1_1_E3
+  quadriceps setting: P1_1_E4
 
-    ankle pumps: E_ANKLE_PUMPS
-    ankle pumps circulation: E_ANKLE_PUMPS_CIRCULATION
+  terminal knee extension: P1_2_E1
+  tke: P1_2_E1
+  knee flexion and extension: P1_2_E2
+  straight leg raises: P1_2_E3
+  straight leg raise: P1_2_E3
+  hip abduction: P1_2_E4
 
-    knee locking: E_KNEE_LOCKING
+  calf raises: P2_E1
+  bridges: P2_E2
+  stationary bicycle: P2_E3
+  bike: P2_E3
+  cycling: P2_E3
+  double limb standing balance: P2_E4
 
-    quadriceps setting: E_QUADRICEPS_SETTING
+  quadriceps stretch standing: P3_E1
+  hamstring stretch supine: P3_E2
+  partial squat with chair: P3_E3
+  standing hamstring curl: P3_E4
+  hip abduction standing: P3_E5
+  hip extension standing: P3_E6
+  wall slides: P3_E7
 
-    straight leg raises: E_STRAIGHT_LEG_RAISE
+  step ups forwards: P4_E1
+  step-ups forwards: P4_E1
+  step ups lateral: P4_E2
+  step-ups lateral: P4_E2
+  lunges: P4_E3
+  step downs: P4_E4
+  single leg squats: P4_E5
+  leg presses: P4_E6
 
-    flexion straight leg raises: E_FLEXION_STRAIGHT_LEG_RAISE
+sources:
+  S1: https://www.massgeneral.org/assets/MGH/pdf/orthopaedics/sports-medicine/physical-therapy/rehabilitation-protocol-for-meniscus-repair.pdf
+  S2: https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf
+  S3: https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf
+  S4: https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf
+  S5: https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf
+  S6: https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf
+  S7: https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf
+  S8: https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf
+  S9: http://www.kneeclinic.info/download/CKCGHKneeArthroscopyExercises040612.pdf
+  S10: https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf
+  S11: https://www.orthowood.com/uploads/2014/01/Knee-Replacement-Rehabilitation.pdf
 
-    heel slides lying: E_HEEL_SLIDES_LYING
-    heel slides sitting: E_HEEL_SLIDES_SITTING
+redflag_policies:
+  - redflag_id: RF_001
+    phase_ids: [P1_1]
+    symptom: fever
+    action: supportive_sequence
+    action_steps:
+      - prescribed_medicine_reminder
+      - pain_check
+      - swell_check
+      - stop_exercise
 
-    knee bending: E_KNEE_BENDING
+  - redflag_id: RF_002
+    phase_ids: [P1_2, P2, P3, P4]
+    symptom: fever
+    action: escalate
 
-    seated passive knee flexion: E_PASSIVE_KNEE_FLEXION_SEATED
+  - redflag_id: RF_003
+    phase_ids: [P1_1, P1_2, P2, P3, P4, P5]
+    symptom: excessive_bleeding_or_wound_drainage
+    action: escalate
 
-    terminal knee extension: E_TERMINAL_KNEE_EXTENSION
-    tke: E_TERMINAL_KNEE_EXTENSION
+  - redflag_id: RF_004
+    phase_ids: [P1_1]
+    symptom: pain
+    severity: 1
+    action: supportive_sequence
+    action_steps:
+      - prescribed_medicine_reminder
+      - swell_check
+      - exercise_downgrade
 
-    short arc lift: E_SHORT_ARC_LIFT
+  - redflag_id: RF_005
+    phase_ids: [P1_1]
+    symptom: pain
+    severity: 2
+    action: supportive_sequence
+    action_steps:
+      - prescribed_medicine_reminder
+      - swell_check
+      - stop_exercise
 
-    hip abduction: E_HIP_ABDUCTION
-    hip abduction band: E_HIP_ABDUCTION_BAND
+  - redflag_id: RF_006
+    phase_ids: [P1_2, P2, P3, P4]
+    symptom: pain
+    severity: 1
+    action: supportive_sequence
+    action_steps:
+      - pain_killer
+      - swell_check
+      - exercise_downgrade
 
-    calf raises: E_CALF_RAISES
+  - redflag_id: RF_007
+    phase_ids: [P1_2, P2, P3, P4]
+    symptom: pain
+    severity: 2
+    action: supportive_sequence
+    action_steps:
+      - pain_killer
+      - swell_check
+      - stop_exercise
 
-    standing toe raise: E_TOE_RAISES
+  - redflag_id: RF_008
+    phase_ids: [P1_1, P1_2, P2, P3, P4, P5]
+    symptom: pain
+    severity: 3
+    action: escalate
 
-    standing hamstring curl: E_STANDING_HAMSTRING_CURL
+  - redflag_id: RF_009
+    phase_ids: [P1_1, P1_2, P2, P3, P4, P5]
+    symptom: swelling
+    severity: 3
+    action: escalate
 
-    hamstring curls: E_HAMSTRING_CURL
+selfcare_actions:
+  - selfcare_id: ICE_ELEVATE_P1_1
+    phase_id: P1_1
+    swell_level: any
+    care_type: ice_elevate
+    duration_minutes: 20
+    frequency_condition: hourly
 
-    partial squat with chair: E_PARTIAL_SQUAT_CHAIR
+  - selfcare_id: ICE_ELEVATE_P1_2
+    phase_id: P1_2
+    swell_level: any
+    care_type: ice_elevate
+    duration_minutes: 20
+    frequency_condition: 3_4_times_per_day
 
-    mini squat: E_MINI_SQUAT
+  - selfcare_id: ICE_ELEVATE_P2_L1
+    phase_id: P2
+    swell_level: 1
+    care_type: ice_elevate
+    duration_minutes: 10
+    frequency_condition: when_needed_and_after_exercise
 
+  - selfcare_id: ICE_ELEVATE_P3_L1
+    phase_id: P3
+    swell_level: 1
+    care_type: ice_elevate
+    duration_minutes: 10
+    frequency_condition: when_needed_and_after_exercise
+
+  - selfcare_id: ICE_ELEVATE_P4_L1
+    phase_id: P4
+    swell_level: 1
+    care_type: ice_elevate
+    duration_minutes: 10
+    frequency_condition: when_needed_and_after_exercise
+
+  - selfcare_id: ICE_ELEVATE_P2_L2
+    phase_id: P2
+    swell_level: 2
+    care_type: ice_elevate
+    duration_minutes: 20
+    frequency_condition: when_needed_and_after_exercise
+
+  - selfcare_id: ICE_ELEVATE_P3_L2
+    phase_id: P3
+    swell_level: 2
+    care_type: ice_elevate
+    duration_minutes: 20
+    frequency_condition: when_needed_and_after_exercise
+
+  - selfcare_id: ICE_ELEVATE_P4_L2
+    phase_id: P4
+    swell_level: 2
+    care_type: ice_elevate
+    duration_minutes: 20
+    frequency_condition: when_needed_and_after_exercise
+
+  - selfcare_id: WARM_P3
+    phase_id: P3
+    swell_level: none
+    care_type: warm
+    duration_minutes: 10
+    frequency_condition: before_exercise
+
+  - selfcare_id: WARM_P4
+    phase_id: P4
+    swell_level: none
+    care_type: warm
+    duration_minutes: 10
+    frequency_condition: before_exercise
 
 exercises:
-  - exercise_id: E_ANKLE_PUMPS
+  - exercise_id: P1_1_E1
     name: Ankle pumps
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 6
-        evidence:
-          - {source_id: E_ANKLE_PUMPS_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_001, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_ANKLE_PUMPS_CHUNK_001, page: 0}
+    priority: 1
+    equipment_required: []
+    position: Lying
+    caution: ""
+    allowed_in: [P1_1]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_1_E1_C1
+        source_id: S6
+      - chunk_id: P1_1_E1_C2
+        source_id: S5
 
-  - exercise_id: E_ANKLE_PUMPS_CIRCULATION
-    name: Ankle pumps
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 6
-        evidence:
-          - {source_id: E_ANKLE_PUMPS_CIRCULATION_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_004, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_ANKLE_PUMPS_CIRCULATION_CHUNK_002, page: 0}
+  - exercise_id: P1_1_E2
+    name: Heel slides
+    priority: 2
+    equipment_required: [socks, sliding_board, strap]
+    position: Lying
+    caution: Avoid active knee flexion to prevent hamstring strain on the posteromedial joint
+    allowed_in: [P1_1]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_1_E2_C1
+        source_id: S6
+      - chunk_id: P1_1_E2_C2
+        source_id: S2
 
-  - exercise_id: E_KNEE_LOCKING
-    name: Knee locking
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_KNEE_LOCKING_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: P_KNEE_01_CHUNK_001, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_KNEE_LOCKING_CHUNK_001, page: 0}
-
-  - exercise_id: E_QUADRICEPS_SETTING
-    name: Quadriceps setting
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_QUADRICEPS_SETTING_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_QUADRICEPS_SETTING_CHUNK_002, page: 0}
-
-  - exercise_id: E_STRAIGHT_LEG_RAISE
-    name: Straight leg raises (lying)
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_STRAIGHT_LEG_RAISE_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: P_KNEE_01_CHUNK_001, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_STRAIGHT_LEG_RAISE_CHUNK_001, page: 0}
-
-  - exercise_id: E_FLEXION_STRAIGHT_LEG_RAISE
-    name: Flexion straight leg raises
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_FLEXION_STRAIGHT_LEG_RAISE_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_004, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_FLEXION_STRAIGHT_LEG_RAISE_CHUNK_002, page: 0}
-
-  - exercise_id: E_HEEL_SLIDES_LYING
-    name: Heel slides (lying)
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_HEEL_SLIDES_LYING_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_HEEL_SLIDES_LYING_CHUNK_001, page: 0}
-
-  - exercise_id: E_KNEE_BENDING
-    name: Knee bending
-    allowed_in: [P_KNEE_01]
-    constraints:
-      - type: pain_max
-        value: 5
-        evidence:
-          - {source_id: E_KNEE_BENDING_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: moderate
-        evidence:
-          - {source_id: P_KNEE_01_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: none
-        evidence:
-          - {source_id: E_KNEE_BENDING_CHUNK_001, page: 0}
-
-  - exercise_id: E_HEEL_SLIDES_SITTING
-    name: Heel slides (sitting)
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_HEEL_SLIDES_SITTING_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_HEEL_SLIDES_SITTING_CHUNK_001, page: 0}
-
-  - exercise_id: E_PASSIVE_KNEE_FLEXION_SEATED
+  - exercise_id: P1_1_E3
     name: Seated passive knee flexion
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_PASSIVE_KNEE_FLEXION_SEATED_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_PASSIVE_KNEE_FLEXION_SEATED_CHUNK_002, page: 0}
+    priority: 2
+    equipment_required: [chair]
+    position: Sitting
+    caution: Avoid active knee flexion to prevent hamstring strain on the posteromedial joint
+    allowed_in: [P1_1]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_1_E3_C1
+        source_id: S3
+      - chunk_id: P1_1_E3_C2
+        source_id: S5
 
-  - exercise_id: E_TERMINAL_KNEE_EXTENSION
+  - exercise_id: P1_1_E4
+    name: Quadriceps setting
+    priority: 2
+    equipment_required: [towel]
+    position: Lying
+    caution: ""
+    allowed_in: [P1_1]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_1_E4_C1
+        source_id: S2
+      - chunk_id: P1_1_E4_C2
+        source_id: S3
+
+  - exercise_id: P1_2_E1
     name: Terminal Knee Extension, Supine
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_TERMINAL_KNEE_EXTENSION_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: C_SWELL_01_CHUNK_003, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_TERMINAL_KNEE_EXTENSION_CHUNK_001, page: 0}
+    priority: 1
+    equipment_required: [towel]
+    position: Lying
+    caution: ""
+    allowed_in: [P1_2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_2_E1_C1
+        source_id: S7
+      - chunk_id: P1_2_E1_C2
+        source_id: S4
 
-  - exercise_id: E_SHORT_ARC_LIFT
-    name: Short Arc Lift
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_SHORT_ARC_LIFT_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_SHORT_ARC_LIFT_CHUNK_002, page: 0}
+  - exercise_id: P1_2_E2
+    name: Knee flexion and extension
+    priority: 1
+    equipment_required: [chair]
+    position: Sitting
+    caution: ""
+    allowed_in: [P1_2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_2_E2_C1
+        source_id: S8
+      - chunk_id: P1_2_E2_C2
+        source_id: S9
 
-  - exercise_id: E_HIP_ABDUCTION
+  - exercise_id: P1_2_E3
+    name: Straight leg raises, supine
+    priority: 2
+    equipment_required: []
+    position: Lying
+    caution: Do not perform straight leg raise if you have a knee extension lag
+    allowed_in: [P1_2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_2_E3_C1
+        source_id: S2
+      - chunk_id: P1_2_E3_C2
+        source_id: S5
+
+  - exercise_id: P1_2_E4
     name: Hip Abduction
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
+    priority: 2
+    equipment_required: []
+    position: Lying
+    caution: Do not perform straight leg raise if you have a knee extension lag
+    allowed_in: [P1_2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P1_2_E4_C1
+        source_id: S4
+      - chunk_id: P1_2_E4_C2
+        source_id: S5
 
-  - exercise_id: E_HIP_ABDUCTION_BAND
-    name: Hip Abduction
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 4
-        evidence:
-          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: partial
-        evidence:
-          - {source_id: E_HIP_ABDUCTION_CHUNK_001, page: 0}
-
-  - exercise_id: E_CALF_RAISES
+  - exercise_id: P2_E1
     name: Calf raises
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+    priority: 1
+    equipment_required: []
+    position: Standing
+    caution: ""
+    allowed_in: [P2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P2_E1_C1
+        source_id: S6
+      - chunk_id: P2_E1_C2
+        source_id: S4
 
-  - exercise_id: E_TOE_RAISES
-    name: Standing toe raise
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: E_TOE_RAISES_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: E_TOE_RAISES_CHUNK_001, page: 0}
+  - exercise_id: P2_E2
+    name: Bridges
+    priority: 1
+    equipment_required: []
+    position: Lying
+    caution: ""
+    allowed_in: [P2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P2_E2_C1
+        source_id: S6
+      - chunk_id: P2_E2_C2
+        source_id: S10
 
-  - exercise_id: E_STANDING_HAMSTRING_CURL
-    name: Standing hamstring curl
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: E_STANDING_HAMSTRING_CURL_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: E_STANDING_HAMSTRING_CURL_CHUNK_001, page: 0}
+  - exercise_id: P2_E3
+    name: Stationary bicycle
+    priority: 2
+    equipment_required: [stationary_bicycle]
+    position: Sitting
+    caution: ""
+    allowed_in: [P2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P2_E3_C1
+        source_id: S4
+      - chunk_id: P2_E3_C2
+        source_id: S3
 
-  - exercise_id: E_HAMSTRING_CURL
-    name: Hamstring curls
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: E_HAMSTRING_CURL_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: E_HAMSTRING_CURL_CHUNK_002, page: 0}
+  - exercise_id: P2_E4
+    name: Double limb standing balance
+    priority: 2
+    equipment_required: [wobble_board, thick_carpet, foam_block, camping_mattress]
+    position: Standing
+    caution: ""
+    allowed_in: [P2]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P2_E4_C1
+        source_id: S1
 
-  - exercise_id: E_PARTIAL_SQUAT_CHAIR
+  - exercise_id: P3_E1
+    name: Quadriceps Stretch, Standing
+    priority: 1
+    equipment_required: []
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E1_C1
+        source_id: S7
+      - chunk_id: P3_E1_C2
+        source_id: S8
+
+  - exercise_id: P3_E2
+    name: Hamstring Stretch, Supine
+    priority: 1
+    equipment_required: [towel]
+    position: Lying
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E2_C1
+        source_id: S7
+      - chunk_id: P3_E2_C2
+        source_id: S8
+
+  - exercise_id: P3_E3
     name: Partial Squat with chair
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: E_PARTIAL_SQUAT_CHAIR_CHUNK_001, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: E_PARTIAL_SQUAT_CHAIR_CHUNK_001, page: 0}
+    priority: 2
+    equipment_required: [chair]
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E3_C1
+        source_id: S7
+      - chunk_id: P3_E3_C2
+        source_id: S9
 
-  - exercise_id: E_MINI_SQUAT
-    name: Mini squat
-    allowed_in: [P_KNEE_02]
-    constraints:
-      - type: pain_max
-        value: 3
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: swelling_max
-        value: mild
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
-      - type: weight_bearing
-        value: full
-        evidence:
-          - {source_id: P_KNEE_02_CHUNK_002, page: 0}
+  - exercise_id: P3_E4
+    name: Standing hamstring curl
+    priority: 1
+    equipment_required: [chair, table]
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E4_C1
+        source_id: S4
+      - chunk_id: P3_E4_C2
+        source_id: S8
+
+  - exercise_id: P3_E5
+    name: Hip abduction, standing
+    priority: 2
+    equipment_required: [resistance_band]
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E5_C1
+        source_id: S6
+
+  - exercise_id: P3_E6
+    name: Hip extension, standing
+    priority: 2
+    equipment_required: [resistance_band]
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E6_C1
+        source_id: S6
+
+  - exercise_id: P3_E7
+    name: Wall slides
+    priority: 3
+    equipment_required: [wall]
+    position: Standing
+    caution: ""
+    allowed_in: [P3]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P3_E7_C1
+        source_id: S9
+      - chunk_id: P3_E7_C2
+        source_id: S10
+
+  - exercise_id: P4_E1
+    name: Step ups, forwards
+    priority: 1
+    equipment_required: [stool]
+    position: Standing
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E1_C1
+        source_id: S9
+      - chunk_id: P4_E1_C2
+        source_id: S10
+
+  - exercise_id: P4_E2
+    name: Step-ups, Lateral
+    priority: 1
+    equipment_required: [stool]
+    position: Standing
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E2_C1
+        source_id: S9
+      - chunk_id: P4_E2_C2
+        source_id: S7
+
+  - exercise_id: P4_E3
+    name: Lunges
+    priority: 2
+    equipment_required: []
+    position: Standing
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E3_C1
+        source_id: S6
+      - chunk_id: P4_E3_C2
+        source_id: S11
+
+  - exercise_id: P4_E4
+    name: Step downs
+    priority: 3
+    equipment_required: [stool, step]
+    position: Standing
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E4_C1
+        source_id: S6
+      - chunk_id: P4_E4_C2
+        source_id: S11
+
+  - exercise_id: P4_E5
+    name: Single leg squats
+    priority: 3
+    equipment_required: [chair]
+    position: Standing
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E5_C1
+        source_id: S6
+
+  - exercise_id: P4_E6
+    name: Leg presses
+    priority: 2
+    equipment_required: [resistance_band]
+    position: Lying
+    caution: ""
+    allowed_in: [P4]
+    constraints: []
+    evidence_chunks:
+      - chunk_id: P4_E6_C1
+        source_id: S8

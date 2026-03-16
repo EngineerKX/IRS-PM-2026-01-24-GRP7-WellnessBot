@@ -10,6 +10,7 @@ class Action(str, Enum):
     FORBID = "FORBID"
     CLARIFY = "CLARIFY"
     ESCALATE = "ESCALATE"
+    SUPPORTIVE_CARE = "SUPPORTIVE_CARE"
 
 
 @dataclass
