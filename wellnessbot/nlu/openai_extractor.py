@@ -43,8 +43,27 @@ User: "1"
 → pain_score = 1
 
 expected_slot = swelling_level
-User: "mild"
+User: "1"
 → swelling_level = "mild"
+
+expected_slot = swelling_level
+User: "2"
+→ swelling_level = "moderate"
+
+expected_slot = swelling_level
+User: "3"
+→ swelling_level = "severe"
+
+expected_slot = symptom_screen
+User: "none"
+→ red_flag_terms = []
+→ pain_score = null
+→ swelling_level = "none"
+
+expected_slot = symptom_screen
+User: "I have fever and pain"
+→ red_flag_terms = ["fever"]
+→ pain_score = null
 
 expected_slot = weeks_since_event
 User: "2 weeks"
@@ -60,12 +79,13 @@ Field definitions:
 - event_type: one of ["acl_surgery","tkr","meniscus","sprain","unknown"].
 - requested_exercise_text: normalized short phrase.
 - pain_score: integer 0–10 if present.
-- swelling_level: one of ["none","mild","moderate","severe","unknown"].
+- swelling_level: one of ["none","mild","moderate","severe","unknown"]. If the user answers 1/2/3 for swelling when expected_slot is swelling_level, map 1->mild, 2->moderate, 3->severe.
 - weight_bearing: one of ["none","partial","full","unknown"].
-- red_flag_terms: list of explicitly mentioned red flag terms (non-negated).
+- red_flag_terms: include explicitly mentioned symptoms such as fever, wound drainage, excessive bleeding.
 - negated_terms: list of explicitly negated terms.
 - nlu_source: must be "openai".
 - surgery_date: date string in YYYY-MM-DD if explicitly provided.
+
 
 You are NOT allowed to:
 - Make decisions.

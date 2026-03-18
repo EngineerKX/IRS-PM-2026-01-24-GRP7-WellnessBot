@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 QUESTION_BANK = {
-    "weeks_since_event": "When was your surgery/injury? Tell me the date (YYYY-MM-DD) **or** how many weeks/days since it happened.",
-    "event_type": "What was the event? (ACL surgery / TKR / meniscus / sprain). If unsure, say “unknown”.",
-    "pain_score": "On a scale of 0–10, what’s your pain right now?",
-    "swelling_level": "How is the swelling: none / mild / moderate / severe?",
-    "weight_bearing": "Are you weight-bearing: none / partial / full?",
-    "red_flag_screen": "Any red flags today: fever, wound drainage, calf pain/swelling, chest pain, shortness of breath, cannot bear weight, knee locking?",
-    "surgery_date": "What was your surgery date? Please reply in YYYY-MM-DD format.",
+    "surgery_date": "When was your surgery or injury? Please reply in YYYY-MM-DD format, or say how many weeks/days ago.",
+    "event_type": "What surgery or injury did you have? (ACL surgery / TKR / meniscus / sprain). If unsure, say “unknown”.",
+    "symptom_screen": "Are you having any symptoms today, such as fever, excessive bleeding, unusual swelling, or pain? If none, just say “none”.",
+    "pain_score": "How would you rate the pain from 1 to 3? (1 = mild, 2 = moderate, 3 = severe)",
+    "swelling_level": "How would you rate the swelling? (1 = mild, 2 = moderate, 3 = severe, or say none)",
 }
 
 REQUIRED_ORDER = [
     "surgery_date",
     "event_type",
+    "symptom_screen",
     "pain_score",
     "swelling_level",
-    "weight_bearing",
 ]

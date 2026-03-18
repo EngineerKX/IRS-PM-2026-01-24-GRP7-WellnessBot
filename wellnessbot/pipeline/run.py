@@ -68,7 +68,7 @@ def run_pipeline(
     # --------------------------------------------
     # Merge current turn into conversation state
     # --------------------------------------------
-    conv = merge_turn(conv, nlu_turn, user_text)
+    conv = merge_turn(conv, nlu_turn, user_text, expected_slot=expected_slot)
 
     # --------------------------------------------
     # EARLY RED FLAG CHECK (before clarify)

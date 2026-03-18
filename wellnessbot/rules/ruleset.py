@@ -133,11 +133,20 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
+    # only provide self-care if symptom information is actually present
+    has_symptom_signal = (
+        bool(nlu.red_flag_terms)
+        or nlu.pain_score is not None
+        or (nlu.swelling_level or "unknown") != "unknown"
+    )
+
+    if not has_symptom_signal:
+        return None
+
     actions = _match_selfcare_actions(nlu)
     if not actions:
         return None
 
-    # only surface self-care if not already in severe red-flag territory
     texts = []
     for a in actions:
         texts.append(

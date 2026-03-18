@@ -5,10 +5,30 @@ import streamlit as st
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
 
+def optimistic_profile_update(user_text: str) -> None:
+    text = (user_text or "").strip().lower()
+
+    # event type
+    event_map = {
+        "meniscus": "meniscus",
+        "acl surgery": "acl_surgery",
+        "acl": "acl_surgery",
+        "tkr": "tkr",
+        "sprain": "sprain",
+    }
+    if text in event_map:
+        st.session_state.conv_state["event_type"] = event_map[text]
+
+    # surgery date
+    import re
+    m = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", user_text or "")
+    if m:
+        st.session_state.conv_state["surgery_date"] = m.group(1)
 
 
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
+
 
 def build_welcome_message(profile: dict | None = None) -> dict:
     profile = profile or {}
@@ -23,8 +43,8 @@ def build_welcome_message(profile: dict | None = None) -> dict:
         slot_name = "surgery_date"
         question = "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) or how many weeks/days ago."
     else:
-        slot_name = "pain_score"
-        question = "What is your pain level right now on a scale of 0–10? You can reply with just a number."
+        slot_name = "symptom_screen"
+        question = "Are you having any symptoms today, such as fever, excessive bleeding, unusual swelling, or pain? If none, just say 'none'."
 
     return {
         "role": "assistant",
@@ -45,27 +65,46 @@ def build_welcome_message(profile: dict | None = None) -> dict:
         },
     }
 
-WELCOME_MESSAGE = build_welcome_message()
+
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
 
+# --- Session state bootstrap ---
+if "conv_state" not in st.session_state:
+    st.session_state.conv_state = {}
+
+if "mock_toggle" not in st.session_state:
+    st.session_state.mock_toggle = False  # default OpenAI
+
+if "pending" not in st.session_state:
+    st.session_state.pending = None
+
+if "feedback_state" not in st.session_state:
+    st.session_state.feedback_state = {}
+
+if "equipment_available" not in st.session_state:
+    st.session_state.equipment_available = (
+        st.session_state.conv_state.get("equipment_available", []) or []
+    )
+
+if "chat" not in st.session_state:
+    st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+
 # --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
-profile = st.session_state.get("conv_state", {})
+profile = st.session_state.conv_state
+
 
 def _show_profile_value(v):
     if v in (None, "", "unknown", []):
         return "—"
     return v
 
+
 st.sidebar.write(f"**Event type:** {_show_profile_value(profile.get('event_type'))}")
 st.sidebar.write(f"**Surgery date:** {_show_profile_value(profile.get('surgery_date'))}")
-
-# Optional equipment/tools selection
-if "equipment_available" not in st.session_state:
-    st.session_state.equipment_available = profile.get("equipment_available", []) or []
 
 tool_options = [
     "chair",
@@ -97,30 +136,7 @@ for tool in tool_options:
         selected_tools.append(tool)
 
 st.session_state.equipment_available = selected_tools
-
-# keep conv_state updated for downstream use
-if "conv_state" not in st.session_state:
-    st.session_state.conv_state = {}
 st.session_state.conv_state["equipment_available"] = selected_tools
-
-# --- Session state ---
-if "chat" not in st.session_state:
-    st.session_state.chat = [build_welcome_message(st.session_state.get("conv_state", {}))]
-
-if "mock_toggle" not in st.session_state:
-    st.session_state.mock_toggle = False  # default OpenAI
-
-# NEW: conversation memory for looping chat
-if "conv_state" not in st.session_state:
-    st.session_state.conv_state = {}  # dict persisted across turns
-
-# pending message support (Option A)
-if "pending" not in st.session_state:
-    st.session_state.pending = None
-
-# store feedback UI state per message index
-if "feedback_state" not in st.session_state:
-    st.session_state.feedback_state = {}  # {msg_index: {"thumb", "comment", "expected_action", "submitted"}}
 
 # --- Controls (top bar) ---
 with st.container():
@@ -139,6 +155,7 @@ with st.container():
                 "event_type": st.session_state.conv_state.get("event_type", "unknown"),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
+                "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.pending = None
@@ -152,6 +169,7 @@ with st.container():
                 "event_type": st.session_state.conv_state.get("event_type", "unknown"),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
+                "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.pending = None
@@ -183,7 +201,9 @@ for i, msg in enumerate(st.session_state.chat):
             nlu_turn = result.get("nlu_turn", {})
             nlu_source = nlu_turn.get("nlu_source", "unknown")
 
-            st.caption(f"mode: **clarify** · asked_slot: `{asked_slot}` · nlu_source: `{nlu_source}`")
+            st.caption(
+                f"mode: **clarify** · asked_slot: `{asked_slot}` · nlu_source: `{nlu_source}`"
+            )
 
             with st.expander("Show turn NLU JSON"):
                 st.code(json.dumps(nlu_turn, indent=2), language="json")
@@ -191,18 +211,17 @@ for i, msg in enumerate(st.session_state.chat):
             with st.expander("Show dialog audit"):
                 st.code(json.dumps(result.get("audit_trace", {}), indent=2), language="json")
 
-            # No feedback controls during clarify
             continue
 
         # ========== FINAL MODE ==========
-        # Your existing display expects decision + nlu in final mode
         action = result["decision"]["action"]
         nlu_source = result["nlu"]["nlu_source"]
         conf = result["decision"]["confidence"]
 
-        st.caption(f"mode: **final** · action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`")
+        st.caption(
+            f"mode: **final** · action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`"
+        )
 
-        # --- Rating controls (FINAL mode only) ---
         audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
         interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
 
@@ -234,7 +253,7 @@ for i, msg in enumerate(st.session_state.chat):
         if fb["thumb"] == "down" and not fb["submitted"]:
             fb["expected_action"] = st.selectbox(
                 "What would be the correct action?",
-                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE", "SUPPORTIVE_CARE"],
                 index=0,
                 key=f"expected_action_{i}",
             )
@@ -249,7 +268,9 @@ for i, msg in enumerate(st.session_state.chat):
                     interaction_id=interaction_id,
                     thumb="down",
                     comment=fb["comment"] or None,
-                    expected_action=None if fb["expected_action"] == "UNKNOWN" else fb["expected_action"],
+                    expected_action=None
+                    if fb["expected_action"] == "UNKNOWN"
+                    else fb["expected_action"],
                 )
                 st.toast("Feedback saved (👎)")
                 st.rerun()
@@ -262,25 +283,26 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Pending compute (Option A) ---
+# --- Pending compute ---
 if st.session_state.pending:
     pending_text = st.session_state.pending
     st.session_state.pending = None
 
-    # ✅ NEW: pass conv_state in, get updated conv_state out
     result = run_pipeline(
         user_text=pending_text,
         conv_state=st.session_state.conv_state,
         force_mock_nlu=st.session_state.mock_toggle,
     )
 
-    # ✅ NEW: always update conversation memory if provided
     if "conv_state" in result:
         st.session_state.conv_state = result["conv_state"]
+        st.session_state.equipment_available = (
+            st.session_state.conv_state.get("equipment_available", [])
+            or st.session_state.equipment_available
+        )
 
     mode = result.get("mode", "final")
 
-    # --- craft assistant bubble depending on mode ---
     if mode == "clarify":
         assistant_text = result.get("question", "I need a bit more information.")
     else:
@@ -317,19 +339,34 @@ if st.session_state.pending:
 
         assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
 
-    # Replace placeholder “Thinking…”
-    if st.session_state.chat and st.session_state.chat[-1]["role"] == "assistant" and st.session_state.chat[-1]["result"] is None:
-        st.session_state.chat[-1] = {"role": "assistant", "text": assistant_text, "result": result}
+    if (
+        st.session_state.chat
+        and st.session_state.chat[-1]["role"] == "assistant"
+        and st.session_state.chat[-1]["result"] is None
+    ):
+        st.session_state.chat[-1] = {
+            "role": "assistant",
+            "text": assistant_text,
+            "result": result,
+        }
     else:
-        st.session_state.chat.append({"role": "assistant", "text": assistant_text, "result": result})
+        st.session_state.chat.append(
+            {"role": "assistant", "text": assistant_text, "result": result}
+        )
 
     st.rerun()
 
 # --- Input box ---
-user_text = st.chat_input("Type your message (e.g., '3 weeks after meniscus surgery, pain 4/10, swelling mild')")
+user_text = st.chat_input(
+    "Type your message (e.g., '3 weeks after meniscus surgery' or 'none' or 'fever' or 'pain and swelling')"
+)
 
 if user_text:
+    optimistic_profile_update(user_text)
+
     st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
-    st.session_state.chat.append({"role": "assistant", "text": "Thinking…", "result": None})
+    st.session_state.chat.append(
+        {"role": "assistant", "text": "Thinking…", "result": None}
+    )
     st.session_state.pending = user_text
     st.rerun()
