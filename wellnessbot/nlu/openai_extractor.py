@@ -69,6 +69,18 @@ expected_slot = weeks_since_event
 User: "2 weeks"
 → weeks_since_event = 2
 
+expected_slot = symptom_screen
+User: "excessive bleeding"
+→ red_flag_terms = ["excessive bleeding"]
+
+expected_slot = symptom_screen
+User: "I have fever"
+→ red_flag_terms = ["fever"]
+
+expected_slot = symptom_screen
+User: "wound drainage"
+→ red_flag_terms = ["wound drainage"]
+
 If the answer does not match the expected slot, extract normally.
 
 If a field is not mentioned, return null (or "unknown" for enums).
@@ -81,7 +93,7 @@ Field definitions:
 - pain_score: integer 0–10 if present.
 - swelling_level: one of ["none","mild","moderate","severe","unknown"]. If the user answers 1/2/3 for swelling when expected_slot is swelling_level, map 1->mild, 2->moderate, 3->severe.
 - weight_bearing: one of ["none","partial","full","unknown"].
-- red_flag_terms: include explicitly mentioned symptoms such as fever, wound drainage, excessive bleeding.
+- red_flag_terms: list of explicitly mentioned red flag terms (non-negated), such as fever, excessive bleeding, wound drainage, pus, chest pain, shortness of breath, cannot bear weight, knee locking.
 - negated_terms: list of explicitly negated terms.
 - nlu_source: must be "openai".
 - surgery_date: date string in YYYY-MM-DD if explicitly provided.

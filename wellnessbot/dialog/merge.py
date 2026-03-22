@@ -15,7 +15,6 @@ def merge_turn(
 
     text = (user_text or "").strip().lower()
 
-    # Only overwrite if new value is present and meaningful
     if (nlu_turn.event_type or "unknown") != "unknown":
         conv.event_type = nlu_turn.event_type
 
@@ -37,7 +36,6 @@ def merge_turn(
     if (nlu_turn.requested_exercise_text or "").strip():
         conv.requested_exercise_text = nlu_turn.requested_exercise_text.strip()
 
-    # Persist red flag terms
     if getattr(nlu_turn, "red_flag_terms", None):
         existing = set(conv.red_flag_terms or [])
         existing.update(nlu_turn.red_flag_terms)
@@ -45,26 +43,39 @@ def merge_turn(
 
     symptom_flags = set(conv.symptom_flags or [])
 
-    # Only treat this turn as symptom screening if the system actually asked for it
     if expected_slot == "symptom_screen":
+        answered_symptom_screen = False
+
         if "pain" in text:
             symptom_flags.add("pain")
+            answered_symptom_screen = True
 
-        if "swelling" in text:
+        # swelling detection (more robust)
+        if (
+            "swelling" in text
+            or "swell" in text
+            or "swollen" in text
+            or "puffy" in text
+            or (nlu_turn.swelling_level or "unknown") != "unknown"
+        ):
             symptom_flags.add("swelling")
+            answered_symptom_screen = True
 
         if "fever" in text:
             symptom_flags.add("fever")
+            answered_symptom_screen = True
 
-        if "bleeding" in text or "wound drainage" in text or "pus" in text:
+        if any(k in text for k in ["bleeding", "bleed", "wound drainage", "pus"]):
             symptom_flags.add("excessive_bleeding")
+            answered_symptom_screen = True
 
         if text in {"none", "no", "no symptoms", "i feel okay", "okay"}:
             symptom_flags.add("none")
+            answered_symptom_screen = True
 
-        conv.symptom_screen_done = True
+        if answered_symptom_screen:
+            conv.symptom_screen_done = True
 
-    # Follow-up answers
     if expected_slot == "pain_score" and nlu_turn.pain_score is not None:
         symptom_flags.add("pain")
 
@@ -73,7 +84,6 @@ def merge_turn(
 
     conv.symptom_flags = sorted(symptom_flags)
 
-    # Audit history
     conv.history.append(
         {
             "turn": conv.turn_count,

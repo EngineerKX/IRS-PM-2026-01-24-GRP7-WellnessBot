@@ -88,17 +88,13 @@ exercise_aliases:
   quadriceps setting: P1_1_E4
 
   terminal knee extension: P1_2_E1
-  tke: P1_2_E1
   knee flexion and extension: P1_2_E2
   straight leg raises: P1_2_E3
-  straight leg raise: P1_2_E3
   hip abduction: P1_2_E4
 
   calf raises: P2_E1
   bridges: P2_E2
   stationary bicycle: P2_E3
-  bike: P2_E3
-  cycling: P2_E3
   double limb standing balance: P2_E4
 
   quadriceps stretch standing: P3_E1
@@ -110,9 +106,7 @@ exercise_aliases:
   wall slides: P3_E7
 
   step ups forwards: P4_E1
-  step-ups forwards: P4_E1
   step ups lateral: P4_E2
-  step-ups lateral: P4_E2
   lunges: P4_E3
   step downs: P4_E4
   single leg squats: P4_E5

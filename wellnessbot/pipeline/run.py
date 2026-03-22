@@ -115,6 +115,9 @@ def run_pipeline(
     # CLARIFY MODE (deterministic)
     # --------------------------------------------
     missing_slots = compute_missing_slots(conv)
+    print("DEBUG conv:", conv.to_dict())
+    print("DEBUG missing_slots:", compute_missing_slots(conv))
+
     next_q = next_question_for_missing(missing_slots)
 
     if next_q:
@@ -160,7 +163,7 @@ def run_pipeline(
             "pain_score": conv.pain_score,
             "swelling_level": conv.swelling_level,
             "weight_bearing": conv.weight_bearing,
-            "red_flag_terms": nlu_turn.red_flag_terms,
+            "red_flag_terms": conv.red_flag_terms,
             "negated_terms": nlu_turn.negated_terms,
             "missing_fields": [],
             "nlu_source": nlu_turn.nlu_source,

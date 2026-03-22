@@ -35,34 +35,56 @@ def _match_redflag_policy(nlu: NLUOutput):
         return None
 
     policies = get_redflag_policies(nlu.event_type, phase_id)
-
-    # fever
-    if "fever" in (nlu.red_flag_terms or []):
-        for p in policies:
-            if p.symptom == "fever":
-                return p
-
-    # excessive bleeding / wound drainage
-    if any(t in (nlu.red_flag_terms or []) for t in ["wound drainage", "pus"]):
-        for p in policies:
-            if p.symptom == "excessive_bleeding_or_wound_drainage":
-                return p
+    matches = []
 
     # pain severity
     if nlu.pain_score is not None:
         for p in policies:
             if p.symptom == "pain" and str(nlu.pain_score) == str(p.severity):
-                return p
+                matches.append(p)
 
     # swelling severity
-    if nlu.swelling_level in {"severe"}:
-        # current schema is text-based, map severe -> 3
+    swelling_map = {
+        "none": "0",
+        "mild": "1",
+        "moderate": "2",
+        "severe": "3",
+        "unknown": "unknown",
+    }
+    swell_value = swelling_map.get(nlu.swelling_level, "unknown")
+    for p in policies:
+        if p.symptom == "swelling" and str(swell_value) == str(p.severity):
+            matches.append(p)
+
+    # fever
+    if "fever" in (nlu.red_flag_terms or []):
         for p in policies:
-            if p.symptom == "swelling" and str(p.severity) == "3":
-                return p
+            if p.symptom == "fever":
+                matches.append(p)
 
-    return None
+    # excessive bleeding / wound drainage
+    if any(
+        t in (nlu.red_flag_terms or [])
+        for t in ["excessive bleeding", "wound drainage", "pus", "bleeding"]
+    ):
+        for p in policies:
+            if p.symptom == "excessive_bleeding_or_wound_drainage":
+                matches.append(p)
 
+    if not matches:
+        return None
+
+    # Choose strongest policy:
+    # escalate beats supportive_sequence
+    def policy_rank(p):
+        if p.action == "escalate":
+            return 2
+        if p.action == "supportive_sequence":
+            return 1
+        return 0
+
+    matches.sort(key=policy_rank, reverse=True)
+    return matches[0]
 
 def _match_selfcare_actions(nlu: NLUOutput):
     phase_id = _current_phase(nlu)
@@ -118,14 +140,37 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
             confidence_delta=-0.6,
         )
 
-    # supportive sequence is kept as FORBID for now, so planner can still show alternatives
     if policy.action == "supportive_sequence":
         steps = ", ".join(policy.action_steps or [])
+
+        has_fever = "fever" in (nlu.red_flag_terms or [])
+        has_pain = nlu.pain_score is not None
+        has_swelling = (nlu.swelling_level or "unknown") != "unknown"
+
+        care_text = ""
+
+        # ONLY include ice if pain or swelling present
+        if has_pain or has_swelling:
+            actions = _match_selfcare_actions(nlu)
+            if actions:
+                parts = []
+                for a in actions:
+                    parts.append(
+                        f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
+                    )
+                care_text = " Self-care: " + "; ".join(parts) + "."
+
+        # Logic:
+        # fever only → no ice
+        # fever + pain/swelling → include ice
         return RuleResult(
             action=Action.SUPPORTIVE_CARE,
             rule_id=f"R_SUPPORTIVE_{policy.redflag_id}",
-            rationale=f"Supportive care required before exercise: {steps}.",
-            citations=["SRC_RULEBOOK_001#supportive_sequence"],
+            rationale=f"Supportive care required before exercise: {steps}.{care_text}",
+            citations=[
+                "SRC_RULEBOOK_001#supportive_sequence",
+                "SRC_RULEBOOK_001#selfcare_actions",
+            ],
             confidence_delta=-0.3,
         )
 
@@ -133,15 +178,43 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
-    # only provide self-care if symptom information is actually present
+    # never provide generic self-care if red flags are present
+    if nlu.red_flag_terms:
+        return None
+
     has_symptom_signal = (
-        bool(nlu.red_flag_terms)
-        or nlu.pain_score is not None
+        nlu.pain_score is not None
+        or (nlu.swelling_level or "unknown") != "unknown"
+    )
+
+    # trigger self-care in early phase even with mild symptoms
+    phase_id = _current_phase(nlu)
+
+    has_symptom_signal = (
+        nlu.pain_score is not None
         or (nlu.swelling_level or "unknown") != "unknown"
     )
 
     if not has_symptom_signal:
         return None
+
+    # STRONG rule for early phase (P1_1)
+    if phase_id == "P1_1":
+        actions = _match_selfcare_actions(nlu)
+        if actions:
+            texts = []
+            for a in actions:
+                texts.append(
+                    f"ice and elevate for {a.duration_minutes} minutes ({a.frequency_condition})"
+                )
+
+            return RuleResult(
+                action=Action.RECOMMEND,
+                rule_id="R_SELFCARE_P1_STRONG_001",
+                rationale="Early-phase recovery requires swelling control: " + "; ".join(texts),
+                citations=["SRC_RULEBOOK_001#selfcare_actions"],
+                confidence_delta=+0.2,
+            )
 
     actions = _match_selfcare_actions(nlu)
     if not actions:

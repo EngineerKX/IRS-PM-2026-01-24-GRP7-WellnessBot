@@ -18,7 +18,7 @@ class ConversationState:
     # Symptom flow
     symptom_screen_done: bool = False
     red_flag_terms: List[str] = field(default_factory=list)
-    symptom_flags: List[str] = field(default_factory=list)  # e.g. pain, swelling, fever, excessive_bleeding
+    symptom_flags: List[str] = field(default_factory=list)
 
     # Optional profile/preferences
     equipment_available: List[str] = field(default_factory=list)
