@@ -1,9 +1,18 @@
+from __future__ import annotations
+
 import json
 import hashlib
 import streamlit as st
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
+from wellnessbot.storage.profile_store import (
+    create_profile,
+    load_profile,
+    list_profiles,
+    save_profile,
+    delete_profile,
+)
 
 
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
@@ -46,6 +55,33 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     }
 
 
+def _profile_to_conv_state(profile: dict) -> dict:
+    return {
+        "event_type": profile.get("event_type", "unknown"),
+        "surgery_date": profile.get("surgery_date", ""),
+        "equipment_available": profile.get("equipment_available", []) or [],
+        "exercise_history": profile.get("exercise_history", []) or [],
+    }
+
+
+def _save_current_profile() -> None:
+    profile_id = (st.session_state.get("profile_id") or "").strip()
+    if not profile_id:
+        return
+
+    conv = st.session_state.conv_state or {}
+
+    profile = {
+        "profile_id": profile_id,
+        "display_name": st.session_state.get("display_name", ""),
+        "event_type": conv.get("event_type", "unknown"),
+        "surgery_date": conv.get("surgery_date", ""),
+        "equipment_available": conv.get("equipment_available", []) or [],
+        "exercise_history": conv.get("exercise_history", []) or [],
+    }
+    save_profile(profile)
+
+
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
@@ -53,6 +89,12 @@ st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. N
 # --- Session state bootstrap ---
 if "conv_state" not in st.session_state:
     st.session_state.conv_state = {}
+
+if "profile_id" not in st.session_state:
+    st.session_state.profile_id = ""
+
+if "display_name" not in st.session_state:
+    st.session_state.display_name = ""
 
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False  # default OpenAI
@@ -71,20 +113,150 @@ if "equipment_available" not in st.session_state:
 if "chat" not in st.session_state:
     st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
 
+if "chat_ended" not in st.session_state:
+    st.session_state.chat_ended = False
+
+# --- Sidebar: Profile Memory ---
+st.sidebar.header("Profile Memory")
+
+new_profile_id = st.sidebar.text_input(
+    "New profile ID",
+    value="",
+    key="new_profile_id_input",
+    help="Use a simple unique ID, e.g. kx_demo",
+)
+
+new_display_name = st.sidebar.text_input(
+    "Display name",
+    value="",
+    key="new_display_name_input",
+)
+
+col_p1, col_p2, col_p3 = st.sidebar.columns(3)
+
+with col_p1:
+    if st.button("Create profile"):
+        try:
+            profile_id = new_profile_id.strip()
+            display_name = new_display_name.strip()
+
+            if not profile_id:
+                st.warning("Please enter a profile ID.")
+            else:
+                profile = create_profile(
+                    profile_id=profile_id,
+                    display_name=display_name,
+                )
+                st.session_state.profile_id = profile["profile_id"]
+                st.session_state.display_name = profile.get("display_name", "")
+                st.session_state.conv_state = _profile_to_conv_state(profile)
+                st.session_state.equipment_available = profile.get("equipment_available", []) or []
+                st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+                st.session_state.pending = None
+                st.session_state.feedback_state = {}
+                st.session_state.chat_ended = False
+                st.success(f"Profile created: {profile['profile_id']}")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Could not create profile: {e}")
+
+existing_profiles = list_profiles()
+selected_profile = st.sidebar.selectbox(
+    "Load existing profile",
+    options=[""] + existing_profiles,
+    index=0,
+    key="selected_profile_id",
+)
+
+with col_p2:
+    if st.button("Load profile"):
+        try:
+            if not selected_profile:
+                st.warning("Please choose a profile first.")
+            else:
+                profile = load_profile(selected_profile)
+                st.session_state.profile_id = profile["profile_id"]
+                st.session_state.display_name = profile.get("display_name", "")
+                st.session_state.conv_state = _profile_to_conv_state(profile)
+                st.session_state.equipment_available = profile.get("equipment_available", []) or []
+                st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+                st.session_state.pending = None
+                st.session_state.feedback_state = {}
+                st.session_state.chat_ended = False
+                st.success(f"Loaded profile: {profile['profile_id']}")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Could not load profile: {e}")
+
+with col_p3:
+    if st.button("Delete profile"):
+        try:
+            active_profile_id = (st.session_state.get("profile_id") or "").strip()
+
+            if not active_profile_id:
+                st.warning("No active profile to delete.")
+            else:
+                delete_profile(active_profile_id)
+
+                st.session_state.profile_id = ""
+                st.session_state.display_name = ""
+                st.session_state.conv_state = {}
+                st.session_state.equipment_available = []
+                st.session_state.chat = [build_welcome_message({})]
+                st.session_state.pending = None
+                st.session_state.feedback_state = {}
+                st.session_state.chat_ended = False
+
+                st.success(f"Deleted profile: {active_profile_id}")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Could not delete profile: {e}")
+
+if st.session_state.profile_id:
+    st.sidebar.caption(
+        f"Active profile: `{st.session_state.profile_id}`"
+        + (
+            f" ({st.session_state.display_name})"
+            if st.session_state.display_name else ""
+        )
+    )
+
+st.sidebar.divider()
+
 # --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
 profile = st.session_state.conv_state
 
+event_type_options = ["unknown", "acl_surgery", "tkr", "meniscus", "sprain"]
 
-def _show_profile_value(v):
-    if v in (None, "", "unknown", []):
-        return "—"
-    return v
+current_event_type = profile.get("event_type", "unknown")
+if current_event_type not in event_type_options:
+    current_event_type = "unknown"
 
+edited_event_type = st.sidebar.selectbox(
+    "Event type",
+    options=event_type_options,
+    index=event_type_options.index(current_event_type),
+    key="editable_event_type",
+)
 
-st.sidebar.write(f"**Event type:** {_show_profile_value(profile.get('event_type'))}")
-st.sidebar.write(f"**Surgery date:** {_show_profile_value(profile.get('surgery_date'))}")
+edited_surgery_date = st.sidebar.text_input(
+    "Surgery date (YYYY-MM-DD)",
+    value=profile.get("surgery_date", ""),
+    key="editable_surgery_date",
+)
+
+if st.sidebar.button("Save core profile"):
+    st.session_state.conv_state["event_type"] = edited_event_type
+    st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
+    _save_current_profile()
+    st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+    st.session_state.pending = None
+    st.session_state.feedback_state = {}
+    st.session_state.chat_ended = False
+    st.success("Core profile updated.")
+    st.rerun()
 
 tool_options = [
     "chair",
@@ -117,6 +289,7 @@ for tool in tool_options:
 
 st.session_state.equipment_available = selected_tools
 st.session_state.conv_state["equipment_available"] = selected_tools
+_save_current_profile()
 
 # --- Controls (top bar) ---
 with st.container():
@@ -141,6 +314,8 @@ with st.container():
             st.session_state.pending = None
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
+            st.session_state.chat_ended = False
+            _save_current_profile()
             st.rerun()
 
     with col3:
@@ -155,6 +330,8 @@ with st.container():
             st.session_state.pending = None
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
+            st.session_state.chat_ended = False
+            _save_current_profile()
             st.rerun()
 
 st.divider()
@@ -280,8 +457,34 @@ if st.session_state.pending:
             st.session_state.conv_state.get("equipment_available", [])
             or st.session_state.equipment_available
         )
+        _save_current_profile()
 
     mode = result.get("mode", "final")
+
+    if mode == "final":
+        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+        action = result.get("decision", {}).get("action")
+        if action in terminal_actions:
+            st.session_state.chat_ended = True
+
+        planner = (result.get("audit_trace") or {}).get("planner") or {}
+        ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+
+        if ex_name:
+            history = st.session_state.conv_state.get("exercise_history", []) or []
+            history.append(
+                {
+                    "timestamp_utc": (result.get("audit_trace") or {}).get("timestamp_utc"),
+                    "exercise_id": ex_name,
+                    "phase_id": planner.get("phase_id"),
+                    "status": "recommended",
+                    "pain_score": st.session_state.conv_state.get("pain_score"),
+                    "swelling_level": st.session_state.conv_state.get("swelling_level"),
+                    "action": result.get("decision", {}).get("action"),
+                }
+            )
+            st.session_state.conv_state["exercise_history"] = history
+            _save_current_profile()
 
     if mode == "clarify":
         assistant_text = result.get("question", "I need a bit more information.")
@@ -319,6 +522,14 @@ if st.session_state.pending:
 
         assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
 
+        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+        if action in terminal_actions:
+            assistant_text += (
+                "\n\n---\n\n"
+                "✅ **Chat ended.**\n\n"
+                "Please click **End conversation / Restart** or **Clear chat only** to start a new case."
+            )
+
     if (
         st.session_state.chat
         and st.session_state.chat[-1]["role"] == "assistant"
@@ -337,15 +548,17 @@ if st.session_state.pending:
     st.rerun()
 
 # --- Input box ---
-user_text = st.chat_input(
-    "Type your message (e.g., '3 weeks after meniscus surgery' or 'none' or 'fever' or 'pain and swelling')"
-)
-
-if user_text:
-
-    st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
-    st.session_state.chat.append(
-        {"role": "assistant", "text": "Thinking…", "result": None}
+if st.session_state.chat_ended:
+    st.info("This chat has ended. Please click **End conversation / Restart** or **Clear chat only** to begin a new case.")
+else:
+    user_text = st.chat_input(
+        "Type your message here"
     )
-    st.session_state.pending = user_text
-    st.rerun()
+
+    if user_text:
+        st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
+        st.session_state.chat.append(
+            {"role": "assistant", "text": "Thinking…", "result": None}
+        )
+        st.session_state.pending = user_text
+        st.rerun()

@@ -55,12 +55,6 @@ def merge_turn(
             merged_flags = (existing_flags | new_flags) - {"none"}
             conv.symptom_flags = sorted(merged_flags)
 
-
-    '''print("DEBUG AFTER MERGE:", {
-    "symptom_screen_done": conv.symptom_screen_done,
-    "symptom_flags": conv.symptom_flags
-    })'''
-
     conv.history.append(
         {
             "turn": conv.turn_count,

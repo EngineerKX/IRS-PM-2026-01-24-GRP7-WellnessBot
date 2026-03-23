@@ -50,16 +50,11 @@ def run_pipeline(
     prior_missing_slots = compute_missing_slots(conv)
     expected_slot = prior_missing_slots[0] if prior_missing_slots else None
 
-    print("DEBUG expected_slot BEFORE extraction:", expected_slot)
-    print("DEBUG user_text BEFORE extraction:", repr(user_text))
-
     # --------------------------------------------
     # Decide NLU mode
     # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
-    print("DEBUG PRIOR MISSING SLOTS:", prior_missing_slots)
-    print("DEBUG EXPECTED SLOT CHOSEN:", expected_slot)
     conv.last_expected_slot = expected_slot or ""
 
     if use_mock:
@@ -120,12 +115,7 @@ def run_pipeline(
     # --------------------------------------------
     # CLARIFY MODE (deterministic hard gate)
     # --------------------------------------------
-    print("DEBUG STATE BEFORE POLICY:", conv.to_dict())
-    print("DEBUG last_expected_slot BEFORE POLICY:", getattr(conv, "last_expected_slot", ""))
-    print("DEBUG symptom_screen_done BEFORE POLICY:", conv.symptom_screen_done)
     missing_slots = compute_missing_slots(conv)
-    print("DEBUG MISSING SLOTS AFTER POLICY:", missing_slots)
-    print("DEBUG symptom_screen_done AFTER POLICY:", conv.symptom_screen_done)
 
 
     if missing_slots:
