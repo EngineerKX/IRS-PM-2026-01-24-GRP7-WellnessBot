@@ -26,10 +26,13 @@ class ConversationState:
     # Planner memory
     exercise_history: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Meta
+    # Meta / dialog control
+    negated_terms: List[str] = field(default_factory=list)
+    asked_slots: List[str] = field(default_factory=list)
     last_user_text: str = ""
     turn_count: int = 0
     history: List[Dict[str, Any]] = field(default_factory=list)
+    last_expected_slot: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -48,6 +51,8 @@ class ConversationState:
             "last_user_text": self.last_user_text,
             "turn_count": self.turn_count,
             "history": self.history,
+            "negated_terms": self.negated_terms,
+            "asked_slots": self.asked_slots,
         }
 
     @staticmethod
@@ -71,4 +76,6 @@ class ConversationState:
             last_user_text=d.get("last_user_text", "") or "",
             turn_count=int(d.get("turn_count", 0) or 0),
             history=d.get("history", []) or [],
+            negated_terms=d.get("negated_terms", []) or [],
+            asked_slots=d.get("asked_slots", []) or [],
         )

@@ -46,15 +46,21 @@ def run_pipeline(
     conv = ConversationState.from_dict(conv_state or {})
 
     # Figure out what slot the system was expecting BEFORE this turn
+    # Peek only; do not mutate asked_slots here.
     prior_missing_slots = compute_missing_slots(conv)
-    prior_next_q = next_question_for_missing(prior_missing_slots)
-    expected_slot = prior_next_q["slot_name"] if prior_next_q else None
+    expected_slot = prior_missing_slots[0] if prior_missing_slots else None
+
+    print("DEBUG expected_slot BEFORE extraction:", expected_slot)
+    print("DEBUG user_text BEFORE extraction:", repr(user_text))
 
     # --------------------------------------------
     # Decide NLU mode
     # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
+    print("DEBUG PRIOR MISSING SLOTS:", prior_missing_slots)
+    print("DEBUG EXPECTED SLOT CHOSEN:", expected_slot)
+    conv.last_expected_slot = expected_slot or ""
 
     if use_mock:
         nlu_turn: NLUOutput = extract_mock(user_text)
@@ -112,15 +118,19 @@ def run_pipeline(
         return result
 
     # --------------------------------------------
-    # CLARIFY MODE (deterministic)
+    # CLARIFY MODE (deterministic hard gate)
     # --------------------------------------------
+    print("DEBUG STATE BEFORE POLICY:", conv.to_dict())
+    print("DEBUG last_expected_slot BEFORE POLICY:", getattr(conv, "last_expected_slot", ""))
+    print("DEBUG symptom_screen_done BEFORE POLICY:", conv.symptom_screen_done)
     missing_slots = compute_missing_slots(conv)
-    print("DEBUG conv:", conv.to_dict())
-    print("DEBUG missing_slots:", compute_missing_slots(conv))
+    print("DEBUG MISSING SLOTS AFTER POLICY:", missing_slots)
+    print("DEBUG symptom_screen_done AFTER POLICY:", conv.symptom_screen_done)
 
-    next_q = next_question_for_missing(missing_slots)
 
-    if next_q:
+    if missing_slots:
+        next_q = next_question_for_missing(conv, missing_slots)
+
         audit_trace = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "mode": "clarify",

@@ -13,8 +13,6 @@ def merge_turn(
     conv.turn_count += 1
     conv.last_user_text = user_text
 
-    text = (user_text or "").strip().lower()
-
     if (nlu_turn.event_type or "unknown") != "unknown":
         conv.event_type = nlu_turn.event_type
 
@@ -41,48 +39,27 @@ def merge_turn(
         existing.update(nlu_turn.red_flag_terms)
         conv.red_flag_terms = sorted(existing)
 
-    symptom_flags = set(conv.symptom_flags or [])
+    if getattr(nlu_turn, "symptom_flags", None):
+        existing_flags = set(x.strip().lower() for x in (conv.symptom_flags or []))
+        new_flags = set(x.strip().lower() for x in (nlu_turn.symptom_flags or []))
 
-    if expected_slot == "symptom_screen":
-        answered_symptom_screen = False
+        # "none" means no additional symptoms in this turn.
+        # It should NOT erase earlier positive symptoms like swelling/pain.
+        if new_flags == {"none"}:
+            if not existing_flags:
+                conv.symptom_flags = ["none"]
+            else:
+                conv.symptom_flags = sorted(existing_flags)
+        else:
+            # Positive symptom evidence overrides/removes "none"
+            merged_flags = (existing_flags | new_flags) - {"none"}
+            conv.symptom_flags = sorted(merged_flags)
 
-        if "pain" in text:
-            symptom_flags.add("pain")
-            answered_symptom_screen = True
 
-        # swelling detection (more robust)
-        if (
-            "swelling" in text
-            or "swell" in text
-            or "swollen" in text
-            or "puffy" in text
-            or (nlu_turn.swelling_level or "unknown") != "unknown"
-        ):
-            symptom_flags.add("swelling")
-            answered_symptom_screen = True
-
-        if "fever" in text:
-            symptom_flags.add("fever")
-            answered_symptom_screen = True
-
-        if any(k in text for k in ["bleeding", "bleed", "wound drainage", "pus"]):
-            symptom_flags.add("excessive_bleeding")
-            answered_symptom_screen = True
-
-        if text in {"none", "no", "no symptoms", "i feel okay", "okay"}:
-            symptom_flags.add("none")
-            answered_symptom_screen = True
-
-        if answered_symptom_screen:
-            conv.symptom_screen_done = True
-
-    if expected_slot == "pain_score" and nlu_turn.pain_score is not None:
-        symptom_flags.add("pain")
-
-    if expected_slot == "swelling_level" and (nlu_turn.swelling_level or "unknown") != "unknown":
-        symptom_flags.add("swelling")
-
-    conv.symptom_flags = sorted(symptom_flags)
+    '''print("DEBUG AFTER MERGE:", {
+    "symptom_screen_done": conv.symptom_screen_done,
+    "symptom_flags": conv.symptom_flags
+    })'''
 
     conv.history.append(
         {

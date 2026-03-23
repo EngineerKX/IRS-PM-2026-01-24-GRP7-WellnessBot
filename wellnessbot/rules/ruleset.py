@@ -95,7 +95,19 @@ def _match_selfcare_actions(nlu: NLUOutput):
 
     matched = []
 
-    # swelling mapping
+    # derive swelling state for self-care lookup
+    swelling_value = nlu.swelling_level
+
+    if swelling_value in (None, "", "unknown"):
+        symptom_flags = set(x.strip().lower() for x in (nlu.symptom_flags or []))
+
+        # If symptom screening is complete and swelling is not present,
+        # treat as "none" for self-care lookup.
+        if getattr(nlu, "symptom_screen_done", False) and "swelling" not in symptom_flags:
+            swelling_value = "none"
+        else:
+            swelling_value = "unknown"
+
     swelling_map = {
         "none": "none",
         "mild": "1",
@@ -103,16 +115,15 @@ def _match_selfcare_actions(nlu: NLUOutput):
         "severe": "3",
         "unknown": "unknown",
     }
-    swell_level = swelling_map.get(nlu.swelling_level, "unknown")
+    swell_level = swelling_map.get(swelling_value, "unknown")
 
     for a in actions:
-        if a.swell_level == "any":
+        if str(a.swell_level).lower() == "any":
             matched.append(a)
         elif str(a.swell_level).lower() == str(swell_level).lower():
             matched.append(a)
 
     return matched
-
 
 def rule_missing_weeks(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:

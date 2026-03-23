@@ -17,7 +17,10 @@ class NLUOutput(BaseModel):
     requested_exercise_text: str = ""
     pain_score: Optional[int] = Field(default=None, ge=0, le=10)
     swelling_level: SwellingLevel = "unknown"
-    weight_bearing: WeightBearing = "unknown"
+    weight_bearing: WeightBearing = "unknown" 
+
+    symptom_screen_done: bool = False
+    symptom_flags: List[str] = Field(default_factory=list)
 
     red_flag_terms: List[str] = Field(default_factory=list)
     negated_terms: List[str] = Field(default_factory=list)

@@ -5,26 +5,6 @@ import streamlit as st
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
 
-def optimistic_profile_update(user_text: str) -> None:
-    text = (user_text or "").strip().lower()
-
-    # event type
-    event_map = {
-        "meniscus": "meniscus",
-        "acl surgery": "acl_surgery",
-        "acl": "acl_surgery",
-        "tkr": "tkr",
-        "sprain": "sprain",
-    }
-    if text in event_map:
-        st.session_state.conv_state["event_type"] = event_map[text]
-
-    # surgery date
-    import re
-    m = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", user_text or "")
-    if m:
-        st.session_state.conv_state["surgery_date"] = m.group(1)
-
 
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
@@ -362,7 +342,6 @@ user_text = st.chat_input(
 )
 
 if user_text:
-    optimistic_profile_update(user_text)
 
     st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
     st.session_state.chat.append(
