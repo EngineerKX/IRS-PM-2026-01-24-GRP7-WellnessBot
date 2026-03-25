@@ -97,7 +97,7 @@ if "display_name" not in st.session_state:
     st.session_state.display_name = ""
 
 if "mock_toggle" not in st.session_state:
-    st.session_state.mock_toggle = False  # default OpenAI
+    st.session_state.mock_toggle = False
 
 if "pending" not in st.session_state:
     st.session_state.pending = None
@@ -111,31 +111,112 @@ if "equipment_available" not in st.session_state:
     )
 
 if "chat" not in st.session_state:
-    st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+    st.session_state.chat = []
 
 if "chat_ended" not in st.session_state:
     st.session_state.chat_ended = False
 
+if "profile_loaded" not in st.session_state:
+    st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
+
+if "show_create_profile" not in st.session_state:
+    st.session_state.show_create_profile = False
+
 # --- Sidebar: Profile Memory ---
 st.sidebar.header("Profile Memory")
 
-new_profile_id = st.sidebar.text_input(
-    "New profile ID",
-    value="",
-    key="new_profile_id_input",
-    help="Use a simple unique ID, e.g. kx_demo",
-)
+existing_profiles = list_profiles()
 
-new_display_name = st.sidebar.text_input(
-    "Display name",
-    value="",
-    key="new_display_name_input",
-)
+profile_options = ["-- Select a profile --"] + existing_profiles
 
-col_p1, col_p2, col_p3 = st.sidebar.columns(3)
+default_idx = 0
+if (
+    st.session_state.get("profile_id")
+    and st.session_state.profile_id in existing_profiles
+):
+    default_idx = 1 + existing_profiles.index(st.session_state.profile_id)
+
+with st.sidebar.form("load_profile_form"):
+    selected_profile = st.selectbox(
+        "Load existing profile",
+        options=profile_options,
+        index=default_idx,
+        key="selected_profile_id",
+    )
+    load_clicked = st.form_submit_button("Load profile")
+
+if load_clicked:
+    try:
+        if selected_profile == "-- Select a profile --":
+            st.warning("Please choose a profile first.")
+        else:
+            profile = load_profile(selected_profile)
+            st.session_state.profile_id = profile["profile_id"]
+            st.session_state.display_name = profile.get("display_name", "")
+            st.session_state.conv_state = _profile_to_conv_state(profile)
+            st.session_state.equipment_available = profile.get("equipment_available", []) or []
+            st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
+            st.session_state.pending = None
+            st.session_state.feedback_state = {}
+            st.session_state.chat_ended = False
+            st.session_state.profile_loaded = True
+            st.session_state.show_create_profile = False
+            st.success(f"Loaded profile: {profile['profile_id']}")
+            st.rerun()
+    except Exception as e:
+        st.error(f"Could not load profile: {e}")
+
+col_p1, col_p2 = st.sidebar.columns(2)
 
 with col_p1:
-    if st.button("Create profile"):
+    if st.button("Create new profile"):
+        st.session_state.show_create_profile = not st.session_state.show_create_profile
+        st.rerun()
+
+with col_p2:
+    if st.button("Delete profile"):
+        try:
+            active_profile_id = (st.session_state.get("profile_id") or "").strip()
+
+            if not active_profile_id:
+                st.warning("No active profile to delete.")
+            else:
+                delete_profile(active_profile_id)
+
+                st.session_state.profile_id = ""
+                st.session_state.display_name = ""
+                st.session_state.conv_state = {}
+                st.session_state.equipment_available = []
+                st.session_state.chat = []
+                st.session_state.pending = None
+                st.session_state.feedback_state = {}
+                st.session_state.chat_ended = False
+                st.session_state.profile_loaded = False
+                st.session_state.show_create_profile = False
+
+                st.success(f"Deleted profile: {active_profile_id}")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Could not delete profile: {e}")
+
+if st.session_state.show_create_profile:
+    with st.sidebar.form("create_profile_form"):
+        new_profile_id = st.text_input(
+            "New profile ID",
+            value="",
+            key="new_profile_id_input",
+            help="Use a simple unique ID, e.g. kx_demo",
+        )
+
+        new_display_name = st.text_input(
+            "Display name",
+            value="",
+            key="new_display_name_input",
+        )
+
+        create_clicked = st.form_submit_button("Confirm create profile")
+
+    if create_clicked:
         try:
             profile_id = new_profile_id.strip()
             display_name = new_display_name.strip()
@@ -155,71 +236,23 @@ with col_p1:
                 st.session_state.pending = None
                 st.session_state.feedback_state = {}
                 st.session_state.chat_ended = False
+                st.session_state.profile_loaded = True
+                st.session_state.show_create_profile = False
                 st.success(f"Profile created: {profile['profile_id']}")
                 st.rerun()
         except Exception as e:
             st.error(f"Could not create profile: {e}")
 
-existing_profiles = list_profiles()
-selected_profile = st.sidebar.selectbox(
-    "Load existing profile",
-    options=[""] + existing_profiles,
-    index=0,
-    key="selected_profile_id",
-)
+active_profile_id = (st.session_state.get("profile_id") or "").strip()
+active_display_name = (st.session_state.get("display_name") or "").strip()
 
-with col_p2:
-    if st.button("Load profile"):
-        try:
-            if not selected_profile:
-                st.warning("Please choose a profile first.")
-            else:
-                profile = load_profile(selected_profile)
-                st.session_state.profile_id = profile["profile_id"]
-                st.session_state.display_name = profile.get("display_name", "")
-                st.session_state.conv_state = _profile_to_conv_state(profile)
-                st.session_state.equipment_available = profile.get("equipment_available", []) or []
-                st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-                st.session_state.pending = None
-                st.session_state.feedback_state = {}
-                st.session_state.chat_ended = False
-                st.success(f"Loaded profile: {profile['profile_id']}")
-                st.rerun()
-        except Exception as e:
-            st.error(f"Could not load profile: {e}")
-
-with col_p3:
-    if st.button("Delete profile"):
-        try:
-            active_profile_id = (st.session_state.get("profile_id") or "").strip()
-
-            if not active_profile_id:
-                st.warning("No active profile to delete.")
-            else:
-                delete_profile(active_profile_id)
-
-                st.session_state.profile_id = ""
-                st.session_state.display_name = ""
-                st.session_state.conv_state = {}
-                st.session_state.equipment_available = []
-                st.session_state.chat = [build_welcome_message({})]
-                st.session_state.pending = None
-                st.session_state.feedback_state = {}
-                st.session_state.chat_ended = False
-
-                st.success(f"Deleted profile: {active_profile_id}")
-                st.rerun()
-        except Exception as e:
-            st.error(f"Could not delete profile: {e}")
-
-if st.session_state.profile_id:
-    st.sidebar.caption(
-        f"Active profile: `{st.session_state.profile_id}`"
-        + (
-            f" ({st.session_state.display_name})"
-            if st.session_state.display_name else ""
-        )
+if active_profile_id:
+    st.sidebar.success(
+        f"Current profile: {active_profile_id}"
+        + (f" ({active_display_name})" if active_display_name else "")
     )
+else:
+    st.sidebar.info("No profile loaded.")
 
 st.sidebar.divider()
 
@@ -239,15 +272,17 @@ edited_event_type = st.sidebar.selectbox(
     options=event_type_options,
     index=event_type_options.index(current_event_type),
     key="editable_event_type",
+    disabled=not st.session_state.profile_loaded,
 )
 
 edited_surgery_date = st.sidebar.text_input(
     "Surgery date (YYYY-MM-DD)",
     value=profile.get("surgery_date", ""),
     key="editable_surgery_date",
+    disabled=not st.session_state.profile_loaded,
 )
 
-if st.sidebar.button("Save core profile"):
+if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_loaded):
     st.session_state.conv_state["event_type"] = edited_event_type
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
@@ -255,6 +290,7 @@ if st.sidebar.button("Save core profile"):
     st.session_state.pending = None
     st.session_state.feedback_state = {}
     st.session_state.chat_ended = False
+    st.session_state.profile_loaded = True
     st.success("Core profile updated.")
     st.rerun()
 
@@ -283,13 +319,15 @@ for tool in tool_options:
         tool.replace("_", " ").title(),
         value=tool in st.session_state.equipment_available,
         key=f"tool_{tool}",
+        disabled=not st.session_state.profile_loaded,
     )
     if checked:
         selected_tools.append(tool)
 
-st.session_state.equipment_available = selected_tools
-st.session_state.conv_state["equipment_available"] = selected_tools
-_save_current_profile()
+if st.session_state.profile_loaded:
+    st.session_state.equipment_available = selected_tools
+    st.session_state.conv_state["equipment_available"] = selected_tools
+    _save_current_profile()
 
 # --- Controls (top bar) ---
 with st.container():
@@ -300,10 +338,11 @@ with st.container():
             "MOCK_NLU",
             value=st.session_state.mock_toggle,
             help="ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
+            disabled=not st.session_state.profile_loaded,
         )
 
     with col2:
-        if st.button("End conversation / Restart"):
+        if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
                 "event_type": st.session_state.conv_state.get("event_type", "unknown"),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
@@ -315,11 +354,12 @@ with st.container():
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
             st.session_state.chat_ended = False
+            st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
             _save_current_profile()
             st.rerun()
 
     with col3:
-        if st.button("Clear chat only"):
+        if st.button("Clear chat only", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
                 "event_type": st.session_state.conv_state.get("event_type", "unknown"),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
@@ -331,6 +371,7 @@ with st.container():
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
             st.session_state.chat_ended = False
+            st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
             _save_current_profile()
             st.rerun()
 
@@ -352,7 +393,6 @@ for i, msg in enumerate(st.session_state.chat):
 
         mode = result.get("mode", "final")
 
-        # ========== CLARIFY MODE ==========
         if mode == "clarify":
             asked_slot = result.get("slot_name", "unknown")
             nlu_turn = result.get("nlu_turn", {})
@@ -370,7 +410,6 @@ for i, msg in enumerate(st.session_state.chat):
 
             continue
 
-        # ========== FINAL MODE ==========
         action = result["decision"]["action"]
         nlu_source = result["nlu"]["nlu_source"]
         conf = result["decision"]["confidence"]
@@ -548,12 +587,12 @@ if st.session_state.pending:
     st.rerun()
 
 # --- Input box ---
-if st.session_state.chat_ended:
+if not st.session_state.profile_loaded:
+    st.info("Please load a profile or create a new profile before starting the chat.")
+elif st.session_state.chat_ended:
     st.info("This chat has ended. Please click **End conversation / Restart** or **Clear chat only** to begin a new case.")
 else:
-    user_text = st.chat_input(
-        "Type your message here"
-    )
+    user_text = st.chat_input("Type your message here")
 
     if user_text:
         st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
