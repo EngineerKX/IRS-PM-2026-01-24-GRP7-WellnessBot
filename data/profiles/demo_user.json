@@ -1,0 +1,38 @@
+{
+  "profile_id": "Demo_User",
+  "display_name": "Demo_User",
+  "event_type": "meniscus",
+  "surgery_date": "2026-03-01",
+  "equipment_available": [
+    "chair",
+    "camping_mattress",
+    "foam_block",
+    "thick_carpet",
+    "wobble_board",
+    "stationary_bicycle",
+    "table",
+    "wall",
+    "stool",
+    "strap",
+    "sliding_board",
+    "socks",
+    "step",
+    "towel",
+    "resistance_band"
+  ],
+  "exercise_history": [
+    {
+      "exercise_id": "P1_2_E2",
+      "turn": 3
+    },
+    {
+      "timestamp_utc": "2026-03-26T04:40:37.589664+00:00",
+      "exercise_id": "Knee flexion and extension",
+      "phase_id": null,
+      "status": "recommended",
+      "pain_score": null,
+      "swelling_level": "mild",
+      "action": "RECOMMEND"
+    }
+  ]
+}

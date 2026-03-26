@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import streamlit as st
+import streamlit.components.v1 as components
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
@@ -13,6 +14,24 @@ from wellnessbot.storage.profile_store import (
     save_profile,
     delete_profile,
 )
+
+TOOL_OPTIONS = [
+    "chair",
+    "resistance_band",
+    "towel",
+    "step",
+    "socks",
+    "sliding_board",
+    "strap",
+    "stool",
+    "wall",
+    "table",
+    "stationary_bicycle",
+    "wobble_board",
+    "thick_carpet",
+    "foam_block",
+    "camping_mattress",
+]
 
 
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
@@ -82,6 +101,189 @@ def _save_current_profile() -> None:
     save_profile(profile)
 
 
+def _sync_core_profile_widgets_from_state() -> None:
+    conv = st.session_state.conv_state or {}
+
+    event_type = conv.get("event_type", "unknown")
+    allowed = ["unknown", "acl_surgery", "tkr", "meniscus", "sprain"]
+    if event_type not in allowed:
+        event_type = "unknown"
+
+    st.session_state.editable_event_type = event_type
+    st.session_state.editable_surgery_date = conv.get("surgery_date", "")
+
+
+def _sync_equipment_multiselect_from_state() -> None:
+    st.session_state.equipment_multiselect = (
+        st.session_state.conv_state.get("equipment_available", []) or []
+    )
+
+
+def _request_scroll_to_bottom() -> None:
+    st.session_state.scroll_request_id = st.session_state.get("scroll_request_id", 0) + 1
+
+
+def _render_scroll_to_bottom_if_requested() -> None:
+    request_id = st.session_state.get("scroll_request_id", 0)
+    last_rendered_id = st.session_state.get("last_rendered_scroll_request_id", 0)
+
+    if request_id <= last_rendered_id:
+        return
+
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            const reqId = {request_id};
+
+            function getTarget(doc) {{
+                const selectors = [
+                    '[data-testid="stAppViewContainer"]',
+                    'section.main',
+                    '.main',
+                    '.block-container'
+                ];
+                for (const sel of selectors) {{
+                    const el = doc.querySelector(sel);
+                    if (el) return el;
+                }}
+                return doc.scrollingElement || doc.documentElement || doc.body;
+            }}
+
+            function smoothScrollToBottom() {{
+                try {{
+                    const doc = window.parent.document;
+                    const target = getTarget(doc);
+                    const anchor = doc.getElementById("wb-bottom-anchor");
+
+                    if (anchor) {{
+                        anchor.scrollIntoView({{
+                            behavior: "smooth",
+                            block: "end"
+                        }});
+                    }}
+
+                    if (target && typeof target.scrollTo === "function") {{
+                        target.scrollTo({{
+                            top: target.scrollHeight,
+                            behavior: "smooth"
+                        }});
+                    }}
+
+                    if (typeof window.parent.scrollTo === "function") {{
+                        window.parent.scrollTo({{
+                            top: doc.body.scrollHeight,
+                            behavior: "smooth"
+                        }});
+                    }}
+                }} catch (e) {{
+                    console.log("scroll error", e);
+                }}
+            }}
+
+            requestAnimationFrame(() => {{
+                requestAnimationFrame(() => {{
+                    setTimeout(smoothScrollToBottom, 60);
+                }});
+            }});
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+    st.session_state.last_rendered_scroll_request_id = request_id
+
+
+def _build_assistant_text(result: dict) -> str:
+    mode = result.get("mode", "final")
+
+    if mode == "clarify":
+        return result.get("question", "I need a bit more information.")
+
+    action = result["decision"]["action"]
+
+    rules = result["audit_trace"].get("rules_fired", [])
+    top_rule = next((r for r in rules if r.get("action") == action), None)
+    if top_rule is None and rules:
+        top_rule = rules[0]
+    rationale = top_rule.get("rationale") if top_rule else "Decision generated."
+
+    rule_ids = result["decision"].get("rule_ids", [])
+    rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
+
+    citations = result["decision"].get("citations", [])
+    cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
+    cite_line = f"\n\nSources: {cite_str}" if citations else ""
+
+    planner = result["audit_trace"].get("planner")
+    planner_line = ""
+    if planner:
+        if planner.get("type") == "alternatives":
+            items = planner.get("items", [])
+            names = [it.get("name") for it in items if it.get("name")]
+            if names:
+                planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
+        else:
+            ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+            stop = planner.get("stop_conditions", [])
+
+            planner_line = f"\n\n**Recommended exercise:** {ex_name}"
+            if stop:
+                planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
+
+    assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
+
+    terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+    if action in terminal_actions:
+        assistant_text += (
+            "\n\n---\n\n"
+            "✅ **Chat ended.**\n\n"
+            "Please click **End conversation / Restart** or **Clear chat only** to start a new case."
+        )
+
+    return assistant_text
+
+
+def _handle_pipeline_result(result: dict) -> None:
+    if "conv_state" in result:
+        st.session_state.conv_state = result["conv_state"]
+        st.session_state.equipment_available = (
+            st.session_state.conv_state.get("equipment_available", [])
+            or st.session_state.equipment_available
+        )
+        st.session_state.sync_core_profile_from_conv = True
+        st.session_state.sync_equipment_from_conv = True
+        _save_current_profile()
+
+    mode = result.get("mode", "final")
+
+    if mode == "final":
+        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+        action = result.get("decision", {}).get("action")
+        if action in terminal_actions:
+            st.session_state.chat_ended = True
+
+        planner = (result.get("audit_trace") or {}).get("planner") or {}
+        ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+
+        if ex_name:
+            history = st.session_state.conv_state.get("exercise_history", []) or []
+            history.append(
+                {
+                    "timestamp_utc": (result.get("audit_trace") or {}).get("timestamp_utc"),
+                    "exercise_id": ex_name,
+                    "phase_id": planner.get("phase_id"),
+                    "status": "recommended",
+                    "pain_score": st.session_state.conv_state.get("pain_score"),
+                    "swelling_level": st.session_state.conv_state.get("swelling_level"),
+                    "action": result.get("decision", {}).get("action"),
+                }
+            )
+            st.session_state.conv_state["exercise_history"] = history
+            _save_current_profile()
+
+
 st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
 st.title("Knee Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
@@ -99,14 +301,16 @@ if "display_name" not in st.session_state:
 if "mock_toggle" not in st.session_state:
     st.session_state.mock_toggle = False
 
-if "pending" not in st.session_state:
-    st.session_state.pending = None
-
 if "feedback_state" not in st.session_state:
     st.session_state.feedback_state = {}
 
 if "equipment_available" not in st.session_state:
     st.session_state.equipment_available = (
+        st.session_state.conv_state.get("equipment_available", []) or []
+    )
+
+if "equipment_multiselect" not in st.session_state:
+    st.session_state.equipment_multiselect = (
         st.session_state.conv_state.get("equipment_available", []) or []
     )
 
@@ -122,19 +326,43 @@ if "profile_loaded" not in st.session_state:
 if "show_create_profile" not in st.session_state:
     st.session_state.show_create_profile = False
 
+if "editable_event_type" not in st.session_state:
+    st.session_state.editable_event_type = "unknown"
+
+if "editable_surgery_date" not in st.session_state:
+    st.session_state.editable_surgery_date = ""
+
+if "sync_core_profile_from_conv" not in st.session_state:
+    st.session_state.sync_core_profile_from_conv = False
+
+if "sync_equipment_from_conv" not in st.session_state:
+    st.session_state.sync_equipment_from_conv = False
+
+if "scroll_request_id" not in st.session_state:
+    st.session_state.scroll_request_id = 0
+
+if "last_rendered_scroll_request_id" not in st.session_state:
+    st.session_state.last_rendered_scroll_request_id = 0
+
+# Sync widget state BEFORE widgets are created
+if st.session_state.sync_core_profile_from_conv:
+    _sync_core_profile_widgets_from_state()
+    st.session_state.sync_core_profile_from_conv = False
+
+if st.session_state.sync_equipment_from_conv:
+    _sync_equipment_multiselect_from_state()
+    st.session_state.sync_equipment_from_conv = False
+
 # --- Sidebar: Profile Memory ---
 st.sidebar.header("Profile Memory")
 
 existing_profiles = list_profiles()
-
 profile_options = ["-- Select a profile --"] + existing_profiles
 
 default_idx = 0
-if (
-    st.session_state.get("profile_id")
-    and st.session_state.profile_id in existing_profiles
-):
-    default_idx = 1 + existing_profiles.index(st.session_state.profile_id)
+active_profile_id = (st.session_state.get("profile_id") or "").strip()
+if active_profile_id and active_profile_id in existing_profiles:
+    default_idx = 1 + existing_profiles.index(active_profile_id)
 
 with st.sidebar.form("load_profile_form"):
     selected_profile = st.selectbox(
@@ -155,12 +383,14 @@ if load_clicked:
             st.session_state.display_name = profile.get("display_name", "")
             st.session_state.conv_state = _profile_to_conv_state(profile)
             st.session_state.equipment_available = profile.get("equipment_available", []) or []
+            _sync_core_profile_widgets_from_state()
+            _sync_equipment_multiselect_from_state()
             st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-            st.session_state.pending = None
             st.session_state.feedback_state = {}
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = True
             st.session_state.show_create_profile = False
+            _request_scroll_to_bottom()
             st.success(f"Loaded profile: {profile['profile_id']}")
             st.rerun()
     except Exception as e:
@@ -169,12 +399,12 @@ if load_clicked:
 col_p1, col_p2 = st.sidebar.columns(2)
 
 with col_p1:
-    if st.button("Create new profile"):
+    if st.button("➕ Create", use_container_width=True):
         st.session_state.show_create_profile = not st.session_state.show_create_profile
         st.rerun()
 
 with col_p2:
-    if st.button("Delete profile"):
+    if st.button("🗑 Delete", use_container_width=True):
         try:
             active_profile_id = (st.session_state.get("profile_id") or "").strip()
 
@@ -187,15 +417,18 @@ with col_p2:
                 st.session_state.display_name = ""
                 st.session_state.conv_state = {}
                 st.session_state.equipment_available = []
+                st.session_state.equipment_multiselect = []
                 st.session_state.chat = []
-                st.session_state.pending = None
                 st.session_state.feedback_state = {}
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = False
                 st.session_state.show_create_profile = False
+                st.session_state.editable_event_type = "unknown"
+                st.session_state.editable_surgery_date = ""
 
                 st.success(f"Deleted profile: {active_profile_id}")
                 st.rerun()
+
         except Exception as e:
             st.error(f"Could not delete profile: {e}")
 
@@ -232,12 +465,14 @@ if st.session_state.show_create_profile:
                 st.session_state.display_name = profile.get("display_name", "")
                 st.session_state.conv_state = _profile_to_conv_state(profile)
                 st.session_state.equipment_available = profile.get("equipment_available", []) or []
+                _sync_core_profile_widgets_from_state()
+                _sync_equipment_multiselect_from_state()
                 st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-                st.session_state.pending = None
                 st.session_state.feedback_state = {}
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = True
                 st.session_state.show_create_profile = False
+                _request_scroll_to_bottom()
                 st.success(f"Profile created: {profile['profile_id']}")
                 st.rerun()
         except Exception as e:
@@ -259,25 +494,17 @@ st.sidebar.divider()
 # --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
-profile = st.session_state.conv_state
-
 event_type_options = ["unknown", "acl_surgery", "tkr", "meniscus", "sprain"]
-
-current_event_type = profile.get("event_type", "unknown")
-if current_event_type not in event_type_options:
-    current_event_type = "unknown"
 
 edited_event_type = st.sidebar.selectbox(
     "Event type",
     options=event_type_options,
-    index=event_type_options.index(current_event_type),
     key="editable_event_type",
     disabled=not st.session_state.profile_loaded,
 )
 
 edited_surgery_date = st.sidebar.text_input(
     "Surgery date (YYYY-MM-DD)",
-    value=profile.get("surgery_date", ""),
     key="editable_surgery_date",
     disabled=not st.session_state.profile_loaded,
 )
@@ -287,42 +514,22 @@ if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
     st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-    st.session_state.pending = None
     st.session_state.feedback_state = {}
     st.session_state.chat_ended = False
     st.session_state.profile_loaded = True
+    _request_scroll_to_bottom()
     st.success("Core profile updated.")
     st.rerun()
 
-tool_options = [
-    "chair",
-    "resistance_band",
-    "towel",
-    "step",
-    "socks",
-    "sliding_board",
-    "strap",
-    "stool",
-    "wall",
-    "table",
-    "stationary_bicycle",
-    "wobble_board",
-    "thick_carpet",
-    "foam_block",
-    "camping_mattress",
-]
-
-selected_tools = []
 st.sidebar.markdown("**Available tools/equipment**")
-for tool in tool_options:
-    checked = st.sidebar.checkbox(
-        tool.replace("_", " ").title(),
-        value=tool in st.session_state.equipment_available,
-        key=f"tool_{tool}",
-        disabled=not st.session_state.profile_loaded,
-    )
-    if checked:
-        selected_tools.append(tool)
+
+selected_tools = st.sidebar.multiselect(
+    "Select available tools",
+    options=TOOL_OPTIONS,
+    key="equipment_multiselect",
+    disabled=not st.session_state.profile_loaded,
+    format_func=lambda x: x.replace("_", " ").title(),
+)
 
 if st.session_state.profile_loaded:
     st.session_state.equipment_available = selected_tools
@@ -350,12 +557,14 @@ with st.container():
                 "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
-            st.session_state.pending = None
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
+            st.session_state.sync_core_profile_from_conv = True
+            st.session_state.sync_equipment_from_conv = True
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
             _save_current_profile()
+            _request_scroll_to_bottom()
             st.rerun()
 
     with col3:
@@ -367,12 +576,14 @@ with st.container():
                 "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
-            st.session_state.pending = None
             st.session_state.feedback_state = {}
             st.session_state.conv_state = preserved_profile
+            st.session_state.sync_core_profile_from_conv = True
+            st.session_state.sync_equipment_from_conv = True
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
             _save_current_profile()
+            _request_scroll_to_bottom()
             st.rerun()
 
 st.divider()
@@ -479,114 +690,7 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Pending compute ---
-if st.session_state.pending:
-    pending_text = st.session_state.pending
-    st.session_state.pending = None
-
-    result = run_pipeline(
-        user_text=pending_text,
-        conv_state=st.session_state.conv_state,
-        force_mock_nlu=st.session_state.mock_toggle,
-    )
-
-    if "conv_state" in result:
-        st.session_state.conv_state = result["conv_state"]
-        st.session_state.equipment_available = (
-            st.session_state.conv_state.get("equipment_available", [])
-            or st.session_state.equipment_available
-        )
-        _save_current_profile()
-
-    mode = result.get("mode", "final")
-
-    if mode == "final":
-        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
-        action = result.get("decision", {}).get("action")
-        if action in terminal_actions:
-            st.session_state.chat_ended = True
-
-        planner = (result.get("audit_trace") or {}).get("planner") or {}
-        ex_name = planner.get("exercise_name") or planner.get("exercise_id")
-
-        if ex_name:
-            history = st.session_state.conv_state.get("exercise_history", []) or []
-            history.append(
-                {
-                    "timestamp_utc": (result.get("audit_trace") or {}).get("timestamp_utc"),
-                    "exercise_id": ex_name,
-                    "phase_id": planner.get("phase_id"),
-                    "status": "recommended",
-                    "pain_score": st.session_state.conv_state.get("pain_score"),
-                    "swelling_level": st.session_state.conv_state.get("swelling_level"),
-                    "action": result.get("decision", {}).get("action"),
-                }
-            )
-            st.session_state.conv_state["exercise_history"] = history
-            _save_current_profile()
-
-    if mode == "clarify":
-        assistant_text = result.get("question", "I need a bit more information.")
-    else:
-        action = result["decision"]["action"]
-
-        rules = result["audit_trace"].get("rules_fired", [])
-        top_rule = next((r for r in rules if r.get("action") == action), None)
-        if top_rule is None and rules:
-            top_rule = rules[0]
-        rationale = top_rule.get("rationale") if top_rule else "Decision generated."
-
-        rule_ids = result["decision"].get("rule_ids", [])
-        rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
-
-        citations = result["decision"].get("citations", [])
-        cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
-        cite_line = f"\n\nSources: {cite_str}" if citations else ""
-
-        planner = result["audit_trace"].get("planner")
-        planner_line = ""
-        if planner:
-            if planner.get("type") == "alternatives":
-                items = planner.get("items", [])
-                names = [it.get("name") for it in items if it.get("name")]
-                if names:
-                    planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
-            else:
-                ex_name = planner.get("exercise_name") or planner.get("exercise_id")
-                stop = planner.get("stop_conditions", [])
-
-                planner_line = f"\n\n**Recommended exercise:** {ex_name}"
-                if stop:
-                    planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
-
-        assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
-
-        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
-        if action in terminal_actions:
-            assistant_text += (
-                "\n\n---\n\n"
-                "✅ **Chat ended.**\n\n"
-                "Please click **End conversation / Restart** or **Clear chat only** to start a new case."
-            )
-
-    if (
-        st.session_state.chat
-        and st.session_state.chat[-1]["role"] == "assistant"
-        and st.session_state.chat[-1]["result"] is None
-    ):
-        st.session_state.chat[-1] = {
-            "role": "assistant",
-            "text": assistant_text,
-            "result": result,
-        }
-    else:
-        st.session_state.chat.append(
-            {"role": "assistant", "text": assistant_text, "result": result}
-        )
-
-    st.rerun()
-
-# --- Input box ---
+# --- Input box / single-run processing ---
 if not st.session_state.profile_loaded:
     st.info("Please load a profile or create a new profile before starting the chat.")
 elif st.session_state.chat_ended:
@@ -595,9 +699,53 @@ else:
     user_text = st.chat_input("Type your message here")
 
     if user_text:
-        st.session_state.chat.append({"role": "user", "text": user_text, "result": None})
+        # 1. Save user message into history first
         st.session_state.chat.append(
-            {"role": "assistant", "text": "Thinking…", "result": None}
+            {"role": "user", "text": user_text, "result": None}
         )
-        st.session_state.pending = user_text
+
+        # 2. Render the new user message immediately in THIS run
+        with st.chat_message("user"):
+            st.write(user_text)
+
+        # 3. Create a visible assistant placeholder immediately
+        with st.chat_message("assistant"):
+            thinking_placeholder = st.empty()
+            thinking_placeholder.write("Thinking…")
+
+        # 4. Run pipeline
+        result = run_pipeline(
+            user_text=user_text,
+            conv_state=st.session_state.conv_state,
+            force_mock_nlu=st.session_state.mock_toggle,
+        )
+
+        # 5. Update conversation/profile state
+        _handle_pipeline_result(result)
+
+        # 6. Build final assistant text
+        assistant_text = _build_assistant_text(result)
+
+        # 7. Replace visible placeholder in-place
+        thinking_placeholder.write(assistant_text)
+
+        # 8. Persist assistant message into chat history
+        st.session_state.chat.append(
+            {"role": "assistant", "text": assistant_text, "result": result}
+        )
+
+        # 9. Request one scroll after render is complete
+        _request_scroll_to_bottom()
+
+        # 10. Rerun once so full chat history is consistent
         st.rerun()
+# --- Hard bottom anchor ---
+st.markdown(
+    """
+    <div id="wb-bottom-anchor" style="height: 24px;"></div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# --- Scroll only after full page render ---
+_render_scroll_to_bottom_if_requested()
