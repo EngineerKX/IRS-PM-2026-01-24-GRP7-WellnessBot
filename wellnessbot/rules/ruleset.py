@@ -13,11 +13,10 @@ from wellnessbot.nlu.schema import NLUOutput
 from wellnessbot.rules.rule_types import Action, RuleResult
 
 
-# Dominance: ESCALATE > FORBID > SUPPORTIVE CARE > CLARIFY > RECOMMEND
+# Dominance: ESCALATE > FORBID > CLARIFY > RECOMMEND
 DOMINANCE = {
-    Action.ESCALATE: 5,
-    Action.FORBID: 4,
-    Action.SUPPORTIVE_CARE: 3,
+    Action.ESCALATE: 4,
+    Action.FORBID: 3,
     Action.CLARIFY: 2,
     Action.RECOMMEND: 1,
 }
@@ -86,6 +85,7 @@ def _match_redflag_policy(nlu: NLUOutput):
     matches.sort(key=policy_rank, reverse=True)
     return matches[0]
 
+
 def _match_selfcare_actions(nlu: NLUOutput):
     phase_id = _current_phase(nlu)
     if not phase_id:
@@ -125,6 +125,7 @@ def _match_selfcare_actions(nlu: NLUOutput):
 
     return matched
 
+
 def rule_missing_weeks(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return RuleResult(
@@ -160,7 +161,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
 
         care_text = ""
 
-        # ONLY include ice if pain or swelling present
+        # ONLY include ice/self-care details if pain or swelling present
         if has_pain or has_swelling:
             actions = _match_selfcare_actions(nlu)
             if actions:
@@ -171,13 +172,11 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
                     )
                 care_text = " Self-care: " + "; ".join(parts) + "."
 
-        # Logic:
-        # fever only → no ice
-        # fever + pain/swelling → include ice
+        # This is still a blocking outcome: do not proceed with exercise now.
         return RuleResult(
-            action=Action.SUPPORTIVE_CARE,
-            rule_id=f"R_SUPPORTIVE_{policy.redflag_id}",
-            rationale=f"Supportive care required before exercise: {steps}.{care_text}",
+            action=Action.FORBID,
+            rule_id=f"R_FORBID_SUPPORTIVE_{policy.redflag_id}",
+            rationale=f"Do not proceed with exercise yet. Supportive care required first: {steps}.{care_text}",
             citations=[
                 "SRC_RULEBOOK_001#supportive_sequence",
                 "SRC_RULEBOOK_001#selfcare_actions",
@@ -198,16 +197,10 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
         or (nlu.swelling_level or "unknown") != "unknown"
     )
 
-    # trigger self-care in early phase even with mild symptoms
-    phase_id = _current_phase(nlu)
-
-    has_symptom_signal = (
-        nlu.pain_score is not None
-        or (nlu.swelling_level or "unknown") != "unknown"
-    )
-
     if not has_symptom_signal:
         return None
+
+    phase_id = _current_phase(nlu)
 
     # STRONG rule for early phase (P1_1)
     if phase_id == "P1_1":

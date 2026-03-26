@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 
 class Action(str, Enum):
@@ -10,7 +10,6 @@ class Action(str, Enum):
     FORBID = "FORBID"
     CLARIFY = "CLARIFY"
     ESCALATE = "ESCALATE"
-    SUPPORTIVE_CARE = "SUPPORTIVE_CARE"
 
 
 @dataclass

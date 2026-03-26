@@ -223,25 +223,14 @@ def run_pipeline(
         else:
             planner_out = {"plan": None, "notes": ["No phase available for planning."]}
 
-    elif final_action in (Action.FORBID, Action.CLARIFY):
+    elif final_action == Action.CLARIFY:
         if state.phase_id:
             planner_out = plan_alternatives(
                 nlu_full.event_type, state.phase_id, top_k=5
             )
 
-    elif final_action == Action.SUPPORTIVE_CARE:
-        supportive_text = " ".join(r.rationale.lower() for r in fired_rules)
-
-        # If the rule says to stop exercise, do not show alternatives yet
-        if "stop_exercise" in supportive_text:
-            planner_out = None
-
-        # If the rule says downgrade exercise, show safer options
-        elif "exercise_downgrade" in supportive_text:
-            if state.phase_id:
-                planner_out = plan_alternatives(
-                    nlu_full.event_type, state.phase_id, top_k=5
-                )
+    elif final_action in (Action.FORBID, Action.ESCALATE):
+        planner_out = None
     
     # --------------------------------------------
     # Update exercise history after recommendation
