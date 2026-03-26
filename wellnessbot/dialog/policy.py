@@ -90,17 +90,18 @@ def next_question_for_missing(
 
 
 def compute_symptom_screen_done(conv: ConversationState) -> bool:
-    # Case 1: explicit "none"
-    if "none" in (conv.symptom_flags or []):
+    symptom_flags = set(conv.symptom_flags or [])
+
+    # explicit no-symptom response
+    if "none" in symptom_flags:
         return True
 
-    # Case 2: symptoms were extracted AFTER symptom_screen was asked
-    if conv.symptom_flags:
-        # Only valid if symptom_screen was actually asked before
-        if "symptom_screen" in (conv.asked_slots or []):
-            return True
+    # any positive symptom evidence should count as symptom screen completed,
+    # including the very first welcome-question turn
+    if symptom_flags - {"none"}:
+        return True
 
-    # Case 3: red flag
+    # red-flag evidence also completes the symptom screen
     if conv.red_flag_terms:
         return True
 
