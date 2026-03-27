@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import hashlib
 import streamlit as st
-import streamlit.components.v1 as components
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
@@ -77,10 +76,16 @@ def build_welcome_message(profile: dict | None = None) -> dict:
         )
     elif not surgery_date:
         slot_name = "surgery_date"
-        question = "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) or how many weeks/days ago."
+        question = (
+            "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
+            "or how many weeks/days ago."
+        )
     else:
         slot_name = "symptom_screen"
-        question = "Are you having any symptoms today, such as fever, excessive bleeding, unusual swelling, or pain? If none, just say 'none'."
+        question = (
+            "Are you having any symptoms today, such as fever, excessive bleeding, "
+            "unusual swelling, or pain? If none, just say 'none'."
+        )
 
     return {
         "role": "assistant",
@@ -144,78 +149,21 @@ def _sync_equipment_multiselect_from_state() -> None:
     )
 
 
-def _request_scroll_to_bottom() -> None:
-    st.session_state.scroll_request_id = st.session_state.get("scroll_request_id", 0) + 1
+def _bump_chat_input_epoch() -> None:
+    st.session_state.chat_input_epoch = st.session_state.get("chat_input_epoch", 0) + 1
 
 
-def _render_scroll_to_bottom_if_requested() -> None:
-    request_id = st.session_state.get("scroll_request_id", 0)
-    last_rendered_id = st.session_state.get("last_rendered_scroll_request_id", 0)
-
-    if request_id <= last_rendered_id:
-        return
-
-    components.html(
-        f"""
-        <script>
-        (function() {{
-            function getTarget(doc) {{
-                const selectors = [
-                    '[data-testid="stAppViewContainer"]',
-                    'section.main',
-                    '.main',
-                    '.block-container'
-                ];
-                for (const sel of selectors) {{
-                    const el = doc.querySelector(sel);
-                    if (el) return el;
-                }}
-                return doc.scrollingElement || doc.documentElement || doc.body;
-            }}
-
-            function smoothScrollToBottom() {{
-                try {{
-                    const doc = window.parent.document;
-                    const target = getTarget(doc);
-                    const anchor = doc.getElementById("wb-bottom-anchor");
-
-                    if (anchor) {{
-                        anchor.scrollIntoView({{
-                            behavior: "smooth",
-                            block: "end"
-                        }});
-                    }}
-
-                    if (target && typeof target.scrollTo === "function") {{
-                        target.scrollTo({{
-                            top: target.scrollHeight,
-                            behavior: "smooth"
-                        }});
-                    }}
-
-                    if (typeof window.parent.scrollTo === "function") {{
-                        window.parent.scrollTo({{
-                            top: doc.body.scrollHeight,
-                            behavior: "smooth"
-                        }});
-                    }}
-                }} catch (e) {{
-                    console.log("scroll error", e);
-                }}
-            }}
-
-            requestAnimationFrame(() => {{
-                requestAnimationFrame(() => {{
-                    setTimeout(smoothScrollToBottom, 60);
-                }});
-            }});
-        }})();
-        </script>
-        """,
-        height=0,
-    )
-
-    st.session_state.last_rendered_scroll_request_id = request_id
+def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = True) -> None:
+    st.session_state.chat = [build_welcome_message(preserved_profile)]
+    st.session_state.feedback_state = {}
+    st.session_state.conv_state = preserved_profile
+    st.session_state.sync_core_profile_from_conv = True
+    st.session_state.sync_equipment_from_conv = True
+    st.session_state.chat_ended = False
+    st.session_state.pending_user_text = None
+    st.session_state.processing_turn = False
+    st.session_state.profile_loaded = keep_profile_loaded
+    _bump_chat_input_epoch()
 
 
 def _build_assistant_text(result: dict) -> str:
@@ -362,17 +310,14 @@ if "sync_core_profile_from_conv" not in st.session_state:
 if "sync_equipment_from_conv" not in st.session_state:
     st.session_state.sync_equipment_from_conv = False
 
-if "scroll_request_id" not in st.session_state:
-    st.session_state.scroll_request_id = 0
-
-if "last_rendered_scroll_request_id" not in st.session_state:
-    st.session_state.last_rendered_scroll_request_id = 0
-
 if "pending_user_text" not in st.session_state:
     st.session_state.pending_user_text = None
 
 if "processing_turn" not in st.session_state:
     st.session_state.processing_turn = False
+
+if "chat_input_epoch" not in st.session_state:
+    st.session_state.chat_input_epoch = 0
 
 # Sync widget state BEFORE widgets are created
 if st.session_state.sync_core_profile_from_conv:
@@ -411,18 +356,10 @@ if load_clicked:
             profile = load_profile(selected_profile)
             st.session_state.profile_id = profile["profile_id"]
             st.session_state.display_name = profile.get("display_name", "")
-            st.session_state.conv_state = _profile_to_conv_state(profile)
             st.session_state.equipment_available = profile.get("equipment_available", []) or []
-            _sync_core_profile_widgets_from_state()
-            _sync_equipment_multiselect_from_state()
-            st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-            st.session_state.feedback_state = {}
-            st.session_state.chat_ended = False
-            st.session_state.profile_loaded = True
+            preserved_profile = _profile_to_conv_state(profile)
+            _reset_chat_session(preserved_profile, keep_profile_loaded=True)
             st.session_state.show_create_profile = False
-            st.session_state.pending_user_text = None
-            st.session_state.processing_turn = False
-            _request_scroll_to_bottom()
             st.success(f"Loaded profile: {profile['profile_id']}")
             st.rerun()
     except Exception as e:
@@ -460,6 +397,7 @@ with col_p2:
                 st.session_state.editable_surgery_date = ""
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
+                _bump_chat_input_epoch()
 
                 st.success(f"Deleted profile: {active_profile_id}")
                 st.rerun()
@@ -498,18 +436,10 @@ if st.session_state.show_create_profile:
                 )
                 st.session_state.profile_id = profile["profile_id"]
                 st.session_state.display_name = profile.get("display_name", "")
-                st.session_state.conv_state = _profile_to_conv_state(profile)
                 st.session_state.equipment_available = profile.get("equipment_available", []) or []
-                _sync_core_profile_widgets_from_state()
-                _sync_equipment_multiselect_from_state()
-                st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-                st.session_state.feedback_state = {}
-                st.session_state.chat_ended = False
-                st.session_state.profile_loaded = True
+                preserved_profile = _profile_to_conv_state(profile)
+                _reset_chat_session(preserved_profile, keep_profile_loaded=True)
                 st.session_state.show_create_profile = False
-                st.session_state.pending_user_text = None
-                st.session_state.processing_turn = False
-                _request_scroll_to_bottom()
                 st.success(f"Profile created: {profile['profile_id']}")
                 st.rerun()
         except Exception as e:
@@ -549,13 +479,14 @@ if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_
     st.session_state.conv_state["surgery_type"] = edited_surgery_type
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
-    st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
-    st.session_state.feedback_state = {}
-    st.session_state.chat_ended = False
-    st.session_state.profile_loaded = True
-    st.session_state.pending_user_text = None
-    st.session_state.processing_turn = False
-    _request_scroll_to_bottom()
+
+    preserved_profile = {
+        "surgery_type": st.session_state.conv_state.get("surgery_type", "unknown"),
+        "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
+        "equipment_available": st.session_state.equipment_available,
+    }
+    _reset_chat_session(preserved_profile, keep_profile_loaded=True)
+
     st.success("Core profile updated.")
     st.rerun()
 
@@ -596,17 +527,11 @@ with st.container():
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
             }
-            st.session_state.chat = [build_welcome_message(preserved_profile)]
-            st.session_state.feedback_state = {}
-            st.session_state.conv_state = preserved_profile
-            st.session_state.sync_core_profile_from_conv = True
-            st.session_state.sync_equipment_from_conv = True
-            st.session_state.chat_ended = False
-            st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
-            st.session_state.pending_user_text = None
-            st.session_state.processing_turn = False
+            _reset_chat_session(
+                preserved_profile,
+                keep_profile_loaded=bool(st.session_state.get("profile_id")),
+            )
             _save_current_profile()
-            _request_scroll_to_bottom()
             st.rerun()
 
     with col3:
@@ -619,17 +544,11 @@ with st.container():
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
             }
-            st.session_state.chat = [build_welcome_message(preserved_profile)]
-            st.session_state.feedback_state = {}
-            st.session_state.conv_state = preserved_profile
-            st.session_state.sync_core_profile_from_conv = True
-            st.session_state.sync_equipment_from_conv = True
-            st.session_state.chat_ended = False
-            st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
-            st.session_state.pending_user_text = None
-            st.session_state.processing_turn = False
+            _reset_chat_session(
+                preserved_profile,
+                keep_profile_loaded=bool(st.session_state.get("profile_id")),
+            )
             _save_current_profile()
-            _request_scroll_to_bottom()
             st.rerun()
 
 st.divider()
@@ -739,10 +658,7 @@ st.divider()
 # --- Input box / staged processing ---
 if not st.session_state.profile_loaded:
     st.info("Please load a profile or create a new profile before starting the chat.")
-elif st.session_state.chat_ended:
-    st.info("This chat has ended. Please click **End conversation / Restart** or **Clear chat only** to begin a new case.")
 else:
-    # Stage 2: process pending turn AFTER user + thinking are already visible
     if st.session_state.processing_turn and st.session_state.pending_user_text:
         pending_text = st.session_state.pending_user_text
 
@@ -761,7 +677,6 @@ else:
         _handle_pipeline_result(result)
         assistant_text = _build_assistant_text(result)
 
-        # Replace the last assistant placeholder
         if (
             st.session_state.chat
             and st.session_state.chat[-1]["role"] == "assistant"
@@ -780,12 +695,19 @@ else:
 
         st.session_state.pending_user_text = None
         st.session_state.processing_turn = False
-
-        _request_scroll_to_bottom()
         st.rerun()
 
-    # Stage 1: accept new user input and show it immediately via chat history
-    user_text = st.chat_input("Type your message here")
+    chat_placeholder = (
+        "Type your message here"
+        if not st.session_state.chat_ended
+        else "Chat ended. Use 'End conversation / Restart' or 'Clear chat only'."
+    )
+
+    user_text = st.chat_input(
+        chat_placeholder,
+        disabled=st.session_state.chat_ended or st.session_state.processing_turn,
+        key=f"chat_input_{st.session_state.chat_input_epoch}",
+    )
 
     if user_text:
         st.session_state.chat.append(
@@ -798,14 +720,3 @@ else:
         st.session_state.pending_user_text = user_text
         st.session_state.processing_turn = True
         st.rerun()
-
-# --- Hard bottom anchor ---
-st.markdown(
-    """
-    <div id="wb-bottom-anchor" style="height: 24px;"></div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# --- Scroll only after full page render ---
-_render_scroll_to_bottom_if_requested()
