@@ -57,7 +57,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     return {
         "role": "assistant",
         "text": (
-            "👋 Welcome to the Knee Rehab Decision Support assistant.\n\n"
+            "👋 Welcome to the Wellnessbot.\n\n"
             "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
             f"{question}"
         ),
@@ -284,8 +284,8 @@ def _handle_pipeline_result(result: dict) -> None:
             _save_current_profile()
 
 
-st.set_page_config(page_title="Knee Rehab Decision Support (v2)", layout="centered")
-st.title("Knee Rehab Decision Support")
+st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="centered")
+st.title("Wellnessbot - Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
 
 # --- Session state bootstrap ---
