@@ -5,7 +5,11 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from wellnessbot.kg.kg import get_exercise, get_protocol_for_event, resolve_exercise_id
+from wellnessbot.kg.kg import (
+    get_exercise,
+    get_protocol_for_surgery_type,
+    resolve_exercise_id,
+)
 from wellnessbot.nlu.mock_extractor import extract_mock
 from wellnessbot.nlu.openai_extractor import extract_with_fallback
 from wellnessbot.nlu.schema import NLUOutput
@@ -15,7 +19,6 @@ from wellnessbot.rules.rule_types import Action
 from wellnessbot.state.infer import infer_state
 from wellnessbot.logging.logger import log_interaction
 
-# NEW: dialog imports
 from wellnessbot.dialog.state import ConversationState
 from wellnessbot.dialog.merge import merge_turn
 from wellnessbot.dialog.policy import compute_missing_slots, next_question_for_missing
@@ -31,13 +34,12 @@ def run_pipeline(
     conv_state: Dict[str, Any] | None = None,
     force_mock_nlu: bool = False,
 ) -> Dict[str, Any]:
-
     """
     Loop-aware pipeline:
     1) NLU (turn-level)
     2) Merge into conversation state
-    3) If missing slots → CLARIFY mode
-    4) Else → run deterministic decision engine
+    3) If missing slots -> CLARIFY mode
+    4) Else -> run deterministic decision engine
     """
 
     # --------------------------------------------
@@ -117,7 +119,6 @@ def run_pipeline(
     # --------------------------------------------
     missing_slots = compute_missing_slots(conv)
 
-
     if missing_slots:
         next_q = next_question_for_missing(conv, missing_slots)
 
@@ -158,7 +159,7 @@ def run_pipeline(
     nlu_full = NLUOutput.model_validate(
         {
             "weeks_since_event": weeks_since_event,
-            "event_type": conv.event_type,
+            "surgery_type": conv.surgery_type,
             "requested_exercise_text": conv.requested_exercise_text,
             "pain_score": conv.pain_score,
             "swelling_level": conv.swelling_level,
@@ -178,19 +179,20 @@ def run_pipeline(
     # --------------------------------------------
     # KG snapshot (audit)
     # --------------------------------------------
-    protocol = get_protocol_for_event(nlu_full.event_type)
+    protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
     protocol_id = protocol.protocol_id if protocol else None
 
     resolved_ex_id = resolve_exercise_id(
-        nlu_full.requested_exercise_text, nlu_full.event_type
+        nlu_full.requested_exercise_text,
+        nlu_full.surgery_type,
     )
 
-    ex = get_exercise(resolved_ex_id, nlu_full.event_type) if resolved_ex_id else None
+    ex = get_exercise(resolved_ex_id, nlu_full.surgery_type) if resolved_ex_id else None
 
     audit_context = {
         "user_text": user_text,
         "nlu_source": nlu_full.nlu_source,
-        "event_type": nlu_full.event_type,
+        "surgery_type": nlu_full.surgery_type,
         "weeks_since_event": nlu_full.weeks_since_event,
         "requested_exercise_text": nlu_full.requested_exercise_text,
         "resolved_exercise_id": resolved_ex_id,
@@ -226,12 +228,14 @@ def run_pipeline(
     elif final_action == Action.CLARIFY:
         if state.phase_id:
             planner_out = plan_alternatives(
-                nlu_full.event_type, state.phase_id, top_k=5
+                nlu_full.surgery_type,
+                state.phase_id,
+                top_k=5,
             )
 
     elif final_action in (Action.FORBID, Action.ESCALATE):
         planner_out = None
-    
+
     # --------------------------------------------
     # Update exercise history after recommendation
     # --------------------------------------------
@@ -259,8 +263,7 @@ def run_pipeline(
         "confidence": conf,
         "rule_ids": [
             r.rule_id for r in fired_rules if r.action.value == final_action.value
-        ]
-        or [r.rule_id for r in fired_rules],
+        ] or [r.rule_id for r in fired_rules],
         "citations": sorted({c for r in fired_rules for c in r.citations}),
     }
 
@@ -299,7 +302,8 @@ def run_pipeline(
     }
 
     result["interaction_id"] = _make_interaction_id(
-        user_text, audit_trace["timestamp_utc"]
+        user_text,
+        audit_trace["timestamp_utc"],
     )
 
     log_interaction(result)

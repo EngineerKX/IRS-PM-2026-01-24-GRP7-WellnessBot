@@ -90,7 +90,7 @@ class SelfCareAction:
 @dataclass(frozen=True)
 class Protocol:
     protocol_id: str
-    event_type: str
+    surgery_type: str
     version: str
     procedure: Dict[str, Any]
     phases: List[Phase]
@@ -240,7 +240,7 @@ def load_protocols(data_dir: Path) -> Dict[str, Protocol]:
 
         proto = Protocol(
             protocol_id=str(raw["protocol_id"]),
-            event_type=str(raw["event_type"]),
+            surgery_type=str(raw.get("surgery_type", raw.get("event_type", "unknown"))),
             version=str(raw.get("version", "1.0")),
             procedure=dict(raw.get("procedure", {}) or {}),
             phases=phases,

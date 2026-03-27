@@ -197,9 +197,25 @@ expected_slot = symptom_screen
 User: "my knee hurts and is swollen"
 → symptom_flags = ["pain", "swelling"]
 
+expected_slot = surgery_type
+User: "post arthroscopic knee surgery"
+→ surgery_type = "post_arthroscopic_knee_surgery"
+
+expected_slot = surgery_type
+User: "acl reconstruction"
+→ surgery_type = "acl_reconstruction"
+
+expected_slot = surgery_type
+User: "tkr"
+→ surgery_type = "tkr"
+
+expected_slot = surgery_type
+User: "sprain"
+→ surgery_type = "sprain_non_surgical"
+
 Field definitions:
 - weeks_since_event: float weeks (convert days to weeks if explicitly given).
-- event_type: one of ["acl_surgery","tkr","meniscus","sprain","unknown"].
+- surgery_type: one of ["post_arthroscopic_knee_surgery","acl_reconstruction","tkr","sprain_non_surgical","unknown"].
 - requested_exercise_text: normalized short phrase ONLY if the user explicitly mentions an exercise they want to do. Otherwise return an empty string "".
 - Never use "unknown" for requested_exercise_text. Use "" instead.
 - pain_score: integer 0–10 if present.
@@ -255,6 +271,7 @@ def convert_date_to_weeks_if_needed(user_text: str, nlu: NLUOutput) -> NLUOutput
 
     return nlu
 
+
 def resolve_symptom_conflicts(nlu: NLUOutput) -> NLUOutput:
     flags = set(nlu.symptom_flags or [])
     red = set(nlu.red_flag_terms or [])
@@ -284,6 +301,7 @@ def resolve_symptom_conflicts(nlu: NLUOutput) -> NLUOutput:
     nlu.symptom_flags = sorted(flags)
     nlu.red_flag_terms = sorted(red)
     return nlu
+
 
 def normalize_expected_slot_numeric(
     user_text: str,
@@ -316,6 +334,7 @@ def normalize_expected_slot_numeric(
 
     return nlu
 
+
 def normalize_symptom_screen_if_needed(
     user_text: str,
     expected_slot: str | None,
@@ -340,50 +359,6 @@ def normalize_symptom_screen_if_needed(
 
     return nlu
 
-'''def normalize_symptom_screen_if_needed(
-    user_text: str,
-    expected_slot: str | None,
-    nlu: NLUOutput,
-) -> NLUOutput:
-    """
-    Minimal fallback — only activates if the LLM failed on symptom screening.
-    """
-    if expected_slot != "symptom_screen":
-        return nlu
-
-    # If LLM already did the job, do nothing
-    if nlu.symptom_screen_done or nlu.symptom_flags:
-        return nlu
-
-    text = (user_text or "").strip().lower()
-    flags = set()
-
-    if text in {"none", "no", "no symptoms", "i feel okay", "okay"}:
-        flags.add("none")
-
-    if "pain" in text:
-        flags.add("pain")
-
-    #if any(k in text for k in ["swelling", "swell", "swollen", "puffy"]):
-    if any(k in text for k in ["swelling", "swell"]):
-        flags.add("swelling")
-
-    if "fever" in text:
-        flags.add("fever")
-        if "fever" not in nlu.red_flag_terms:
-            nlu.red_flag_terms.append("fever")
-
-    if any(k in text for k in ["excessive bleeding", "bleeding", "bleed", "wound drainage", "pus"]):
-        flags.add("excessive_bleeding")
-        if "excessive bleeding" not in nlu.red_flag_terms:
-            nlu.red_flag_terms.append("excessive bleeding")
-
-    if flags:
-        nlu.symptom_flags = sorted(flags)
-        nlu.symptom_screen_done = True
-
-    return nlu
-'''
 
 def normalize_requested_exercise_if_needed(nlu: NLUOutput) -> NLUOutput:
     text = (nlu.requested_exercise_text or "").strip().lower()
@@ -398,9 +373,15 @@ def _build_response_schema() -> Dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "weeks_since_event": {"type": ["number", "null"]},
-            "event_type": {
+            "surgery_type": {
                 "type": "string",
-                "enum": ["acl_surgery", "tkr", "meniscus", "sprain", "unknown"],
+                "enum": [
+                    "post_arthroscopic_knee_surgery",
+                    "acl_reconstruction",
+                    "tkr",
+                    "sprain_non_surgical",
+                    "unknown",
+                ],
             },
             "surgery_date": {"type": "string"},
             "requested_exercise_text": {"type": "string"},
@@ -428,7 +409,7 @@ def _build_response_schema() -> Dict[str, Any]:
         },
         "required": [
             "weeks_since_event",
-            "event_type",
+            "surgery_type",
             "surgery_date",
             "requested_exercise_text",
             "pain_score",
@@ -517,12 +498,14 @@ def extract_with_fallback(
     nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
     nlu = normalize_requested_exercise_if_needed(nlu)
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
-    print("DEBUG POSTPROCESS:", {
-    "expected_slot": expected_slot,
-    "user_text": user_text,
-    "pain_score": nlu.pain_score,
-    })
+    print(
+        "DEBUG POSTPROCESS:",
+        {
+            "expected_slot": expected_slot,
+            "user_text": user_text,
+            "pain_score": nlu.pain_score,
+        },
+    )
     nlu = resolve_symptom_conflicts(nlu)
 
     return nlu
-    

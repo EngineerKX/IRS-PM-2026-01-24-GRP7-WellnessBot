@@ -14,7 +14,7 @@ from wellnessbot.kg.loader import (
 _DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 _PROTOCOLS: Dict[str, Protocol] = load_protocols(_DATA_DIR)
 
-_EVENT_TO_PROTOCOL = {p.event_type: pid for pid, p in _PROTOCOLS.items()}
+_SURGERY_TO_PROTOCOL = {p.surgery_type: pid for pid, p in _PROTOCOLS.items()}
 
 
 @dataclass
@@ -32,13 +32,18 @@ class CompatibleExercise:
     source_refs: List[str]
 
 
-def get_protocol_for_event(event_type: str) -> Optional[Protocol]:
-    pid = _EVENT_TO_PROTOCOL.get(event_type)
+def get_protocol_for_surgery_type(surgery_type: str) -> Optional[Protocol]:
+    pid = _SURGERY_TO_PROTOCOL.get(surgery_type)
     return _PROTOCOLS.get(pid) if pid else None
 
 
-def phase_from_weeks(weeks: float, event_type: str) -> str:
-    proto = get_protocol_for_event(event_type)
+# Backward-compatible alias during migration
+def get_protocol_for_event(event_type: str) -> Optional[Protocol]:
+    return get_protocol_for_surgery_type(event_type)
+
+
+def phase_from_weeks(weeks: float, surgery_type: str) -> str:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         if not _PROTOCOLS:
             raise RuntimeError(
@@ -64,8 +69,8 @@ def phase_from_weeks(weeks: float, event_type: str) -> str:
     )
 
 
-def resolve_exercise_id(requested_exercise_text: str, event_type: str) -> Optional[str]:
-    proto = get_protocol_for_event(event_type)
+def resolve_exercise_id(requested_exercise_text: str, surgery_type: str) -> Optional[str]:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         return None
     return proto.exercise_aliases.get((requested_exercise_text or "").strip().lower())
@@ -89,8 +94,8 @@ def _swelling_rank(level: str) -> int:
         return order.index("unknown")
 
 
-def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExercise]:
-    proto = get_protocol_for_event(event_type)
+def get_exercise(exercise_id: str, surgery_type: str) -> Optional[CompatibleExercise]:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         return None
 
@@ -184,7 +189,10 @@ def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExerci
         weight_bearing_allowed = ["none", "partial", "full"]
 
     # Evidence refs: constraints + evidence chunks
-    chunk_refs = [f"{ec.source_id}#{ec.chunk_id}" for ec in getattr(ex, "evidence_chunks", []) or []]
+    chunk_refs = [
+        f"{ec.source_id}#{ec.chunk_id}"
+        for ec in getattr(ex, "evidence_chunks", []) or []
+    ]
     source_refs = sorted(set(ev_pain_all + ev_sw_all + ev_wb_all + chunk_refs))
 
     return CompatibleExercise(
@@ -202,14 +210,14 @@ def get_exercise(exercise_id: str, event_type: str) -> Optional[CompatibleExerci
     )
 
 
-def list_exercises_for_phase(event_type: str, phase_id: str) -> List[CompatibleExercise]:
-    proto = get_protocol_for_event(event_type)
+def list_exercises_for_phase(surgery_type: str, phase_id: str) -> List[CompatibleExercise]:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         return []
 
     out: List[CompatibleExercise] = []
     for ex_id in proto.exercises.keys():
-        ex = get_exercise(ex_id, event_type)
+        ex = get_exercise(ex_id, surgery_type)
         if not ex:
             continue
         if phase_id in (ex.allowed_phases or []):
@@ -219,15 +227,15 @@ def list_exercises_for_phase(event_type: str, phase_id: str) -> List[CompatibleE
     return out
 
 
-def get_redflag_policies(event_type: str, phase_id: str) -> List[RedFlagPolicy]:
-    proto = get_protocol_for_event(event_type)
+def get_redflag_policies(surgery_type: str, phase_id: str) -> List[RedFlagPolicy]:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         return []
     return [p for p in proto.redflag_policies if phase_id in p.phase_ids]
 
 
-def get_selfcare_actions(event_type: str, phase_id: str) -> List[SelfCareAction]:
-    proto = get_protocol_for_event(event_type)
+def get_selfcare_actions(surgery_type: str, phase_id: str) -> List[SelfCareAction]:
+    proto = get_protocol_for_surgery_type(surgery_type)
     if not proto:
         return []
     return [a for a in proto.selfcare_actions if a.phase_id == phase_id]

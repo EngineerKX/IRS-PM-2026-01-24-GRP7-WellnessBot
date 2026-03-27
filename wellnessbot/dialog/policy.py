@@ -40,8 +40,8 @@ def build_symptom_screen_question(conv: ConversationState) -> str:
 def compute_missing_slots(conv: ConversationState) -> List[str]:
     conv.symptom_screen_done = compute_symptom_screen_done(conv)
 
-    if (conv.event_type or "unknown") == "unknown":
-        return ["event_type"]
+    if (conv.surgery_type or "unknown") == "unknown":
+        return ["surgery_type"]
 
     if not (conv.surgery_date or "").strip() and conv.weeks_since_event is None:
         return ["surgery_date"]
@@ -58,6 +58,7 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
         return ["swelling_level"]
 
     return []
+
 
 def next_question_for_missing(
     conv: ConversationState,
@@ -86,7 +87,6 @@ def next_question_for_missing(
         "slot_name": slot,
         "question": question,
     }
-
 
 
 def compute_symptom_screen_done(conv: ConversationState) -> bool:

@@ -1,5 +1,5 @@
 protocol_id: PROTO_KNEE_ARTHRO_V3
-event_type: meniscus
+surgery_type: post_arthroscopic_knee_surgery
 version: "3.0"
 
 procedure:

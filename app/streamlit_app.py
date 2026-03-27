@@ -33,6 +33,26 @@ TOOL_OPTIONS = [
     "camping_mattress",
 ]
 
+SURGERY_TYPE_OPTIONS = [
+    "unknown",
+    "post_arthroscopic_knee_surgery",
+    "acl_reconstruction",
+    "tkr",
+    "sprain_non_surgical",
+]
+
+SURGERY_TYPE_LABELS = {
+    "unknown": "Unknown",
+    "post_arthroscopic_knee_surgery": "Post-arthroscopic knee surgery",
+    "acl_reconstruction": "ACL reconstruction",
+    "tkr": "TKR",
+    "sprain_non_surgical": "Sprain (non-surgical)",
+}
+
+
+def format_surgery_type(value: str) -> str:
+    return SURGERY_TYPE_LABELS.get(value, value.replace("_", " ").title())
+
 
 def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
@@ -41,18 +61,27 @@ def make_interaction_id(user_text: str, audit_ts: str) -> str:
 def build_welcome_message(profile: dict | None = None) -> dict:
     profile = profile or {}
 
-    event_type = profile.get("event_type", "unknown")
+    surgery_type = profile.get("surgery_type", profile.get("event_type", "unknown"))
     surgery_date = profile.get("surgery_date", "")
 
-    if event_type in (None, "", "unknown"):
-        slot_name = "event_type"
-        question = "What surgery or injury did you have? (ACL surgery / TKR / meniscus / sprain)"
+    if surgery_type in (None, "", "unknown"):
+        slot_name = "surgery_type"
+        question = (
+            "What type of surgery or injury did you have? "
+            "(Post-arthroscopic knee surgery / ACL reconstruction / TKR / sprain non-surgical)"
+        )
     elif not surgery_date:
         slot_name = "surgery_date"
-        question = "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) or how many weeks/days ago."
+        question = (
+            "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
+            "or how many weeks/days ago."
+        )
     else:
         slot_name = "symptom_screen"
-        question = "Are you having any symptoms today, such as fever, excessive bleeding, unusual swelling, or pain? If none, just say 'none'."
+        question = (
+            "Are you having any symptoms today, such as fever, excessive bleeding, "
+            "unusual swelling, or pain? If none, just say 'none'."
+        )
 
     return {
         "role": "assistant",
@@ -76,7 +105,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
 
 def _profile_to_conv_state(profile: dict) -> dict:
     return {
-        "event_type": profile.get("event_type", "unknown"),
+        "surgery_type": profile.get("surgery_type", profile.get("event_type", "unknown")),
         "surgery_date": profile.get("surgery_date", ""),
         "equipment_available": profile.get("equipment_available", []) or [],
         "exercise_history": profile.get("exercise_history", []) or [],
@@ -93,7 +122,7 @@ def _save_current_profile() -> None:
     profile = {
         "profile_id": profile_id,
         "display_name": st.session_state.get("display_name", ""),
-        "event_type": conv.get("event_type", "unknown"),
+        "surgery_type": conv.get("surgery_type", conv.get("event_type", "unknown")),
         "surgery_date": conv.get("surgery_date", ""),
         "equipment_available": conv.get("equipment_available", []) or [],
         "exercise_history": conv.get("exercise_history", []) or [],
@@ -104,12 +133,11 @@ def _save_current_profile() -> None:
 def _sync_core_profile_widgets_from_state() -> None:
     conv = st.session_state.conv_state or {}
 
-    event_type = conv.get("event_type", "unknown")
-    allowed = ["unknown", "acl_surgery", "tkr", "meniscus", "sprain"]
-    if event_type not in allowed:
-        event_type = "unknown"
+    surgery_type = conv.get("surgery_type", conv.get("event_type", "unknown"))
+    if surgery_type not in SURGERY_TYPE_OPTIONS:
+        surgery_type = "unknown"
 
-    st.session_state.editable_event_type = event_type
+    st.session_state.editable_surgery_type = surgery_type
     st.session_state.editable_surgery_date = conv.get("surgery_date", "")
 
 
@@ -234,7 +262,7 @@ def _build_assistant_text(result: dict) -> str:
 
     assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
 
-    terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+    terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
     if action in terminal_actions:
         assistant_text += (
             "\n\n---\n\n"
@@ -259,7 +287,7 @@ def _handle_pipeline_result(result: dict) -> None:
     mode = result.get("mode", "final")
 
     if mode == "final":
-        terminal_actions = {"RECOMMEND", "SUPPORTIVE_CARE", "ESCALATE", "FORBID"}
+        terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
         action = result.get("decision", {}).get("action")
         if action in terminal_actions:
             st.session_state.chat_ended = True
@@ -326,8 +354,8 @@ if "profile_loaded" not in st.session_state:
 if "show_create_profile" not in st.session_state:
     st.session_state.show_create_profile = False
 
-if "editable_event_type" not in st.session_state:
-    st.session_state.editable_event_type = "unknown"
+if "editable_surgery_type" not in st.session_state:
+    st.session_state.editable_surgery_type = "unknown"
 
 if "editable_surgery_date" not in st.session_state:
     st.session_state.editable_surgery_date = ""
@@ -423,7 +451,7 @@ with col_p2:
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = False
                 st.session_state.show_create_profile = False
-                st.session_state.editable_event_type = "unknown"
+                st.session_state.editable_surgery_type = "unknown"
                 st.session_state.editable_surgery_date = ""
 
                 st.success(f"Deleted profile: {active_profile_id}")
@@ -494,13 +522,12 @@ st.sidebar.divider()
 # --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
-event_type_options = ["unknown", "acl_surgery", "tkr", "meniscus", "sprain"]
-
-edited_event_type = st.sidebar.selectbox(
-    "Event type",
-    options=event_type_options,
-    key="editable_event_type",
+edited_surgery_type = st.sidebar.selectbox(
+    "Surgery type",
+    options=SURGERY_TYPE_OPTIONS,
+    key="editable_surgery_type",
     disabled=not st.session_state.profile_loaded,
+    format_func=format_surgery_type,
 )
 
 edited_surgery_date = st.sidebar.text_input(
@@ -510,7 +537,7 @@ edited_surgery_date = st.sidebar.text_input(
 )
 
 if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_loaded):
-    st.session_state.conv_state["event_type"] = edited_event_type
+    st.session_state.conv_state["surgery_type"] = edited_surgery_type
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
     st.session_state.chat = [build_welcome_message(st.session_state.conv_state)]
@@ -551,7 +578,10 @@ with st.container():
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
-                "event_type": st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_type": st.session_state.conv_state.get(
+                    "surgery_type",
+                    st.session_state.conv_state.get("event_type", "unknown"),
+                ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
                 "exercise_history": st.session_state.conv_state.get("exercise_history", []),
@@ -570,7 +600,10 @@ with st.container():
     with col3:
         if st.button("Clear chat only", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
-                "event_type": st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_type": st.session_state.conv_state.get(
+                    "surgery_type",
+                    st.session_state.conv_state.get("event_type", "unknown"),
+                ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
                 "exercise_history": st.session_state.conv_state.get("exercise_history", []),
@@ -660,7 +693,7 @@ for i, msg in enumerate(st.session_state.chat):
         if fb["thumb"] == "down" and not fb["submitted"]:
             fb["expected_action"] = st.selectbox(
                 "What would be the correct action?",
-                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE", "SUPPORTIVE_CARE"],
+                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
                 index=0,
                 key=f"expected_action_{i}",
             )
@@ -699,46 +732,36 @@ else:
     user_text = st.chat_input("Type your message here")
 
     if user_text:
-        # 1. Save user message into history first
         st.session_state.chat.append(
             {"role": "user", "text": user_text, "result": None}
         )
 
-        # 2. Render the new user message immediately in THIS run
         with st.chat_message("user"):
             st.write(user_text)
 
-        # 3. Create a visible assistant placeholder immediately
         with st.chat_message("assistant"):
             thinking_placeholder = st.empty()
             thinking_placeholder.write("Thinking…")
 
-        # 4. Run pipeline
         result = run_pipeline(
             user_text=user_text,
             conv_state=st.session_state.conv_state,
             force_mock_nlu=st.session_state.mock_toggle,
         )
 
-        # 5. Update conversation/profile state
         _handle_pipeline_result(result)
 
-        # 6. Build final assistant text
         assistant_text = _build_assistant_text(result)
 
-        # 7. Replace visible placeholder in-place
         thinking_placeholder.write(assistant_text)
 
-        # 8. Persist assistant message into chat history
         st.session_state.chat.append(
             {"role": "assistant", "text": assistant_text, "result": result}
         )
 
-        # 9. Request one scroll after render is complete
         _request_scroll_to_bottom()
-
-        # 10. Rerun once so full chat history is consistent
         st.rerun()
+
 # --- Hard bottom anchor ---
 st.markdown(
     """

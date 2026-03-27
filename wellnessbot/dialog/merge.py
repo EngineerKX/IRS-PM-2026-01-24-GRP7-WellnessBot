@@ -13,8 +13,8 @@ def merge_turn(
     conv.turn_count += 1
     conv.last_user_text = user_text
 
-    if (nlu_turn.event_type or "unknown") != "unknown":
-        conv.event_type = nlu_turn.event_type
+    if (nlu_turn.surgery_type or "unknown") != "unknown":
+        conv.surgery_type = nlu_turn.surgery_type
 
     if (getattr(nlu_turn, "surgery_date", "") or "").strip():
         conv.surgery_date = nlu_turn.surgery_date.strip()

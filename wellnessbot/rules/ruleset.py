@@ -25,7 +25,7 @@ DOMINANCE = {
 def _current_phase(nlu: NLUOutput) -> Optional[str]:
     if nlu.weeks_since_event is None:
         return None
-    return phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
+    return phase_from_weeks(nlu.weeks_since_event, nlu.surgery_type)
 
 
 def _match_redflag_policy(nlu: NLUOutput):
@@ -33,7 +33,7 @@ def _match_redflag_policy(nlu: NLUOutput):
     if not phase_id:
         return None
 
-    policies = get_redflag_policies(nlu.event_type, phase_id)
+    policies = get_redflag_policies(nlu.surgery_type, phase_id)
     matches = []
 
     # pain severity
@@ -91,7 +91,7 @@ def _match_selfcare_actions(nlu: NLUOutput):
     if not phase_id:
         return []
 
-    actions = get_selfcare_actions(nlu.event_type, phase_id)
+    actions = get_selfcare_actions(nlu.surgery_type, phase_id)
 
     matched = []
 
@@ -155,7 +155,6 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
     if policy.action == "supportive_sequence":
         steps = ", ".join(policy.action_steps or [])
 
-        has_fever = "fever" in (nlu.red_flag_terms or [])
         has_pain = nlu.pain_score is not None
         has_swelling = (nlu.swelling_level or "unknown") != "unknown"
 
@@ -172,7 +171,6 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
                     )
                 care_text = " Self-care: " + "; ".join(parts) + "."
 
-        # This is still a blocking outcome: do not proceed with exercise now.
         return RuleResult(
             action=Action.FORBID,
             rule_id=f"R_FORBID_SUPPORTIVE_{policy.redflag_id}",
@@ -243,7 +241,7 @@ def rule_unknown_exercise_clarify(nlu: NLUOutput) -> Optional[RuleResult]:
     if not (nlu.requested_exercise_text or "").strip():
         return None
 
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if ex_id is None:
         return RuleResult(
             action=Action.CLARIFY,
@@ -259,12 +257,12 @@ def rule_phase_forbid(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
 
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if not ex_id:
         return None
 
-    phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
-    ex = get_exercise(ex_id, nlu.event_type)
+    phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.surgery_type)
+    ex = get_exercise(ex_id, nlu.surgery_type)
     if ex and phase_id not in ex.allowed_phases:
         return RuleResult(
             action=Action.FORBID,
@@ -280,11 +278,11 @@ def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
 
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if not ex_id:
         return None
 
-    ex = get_exercise(ex_id, nlu.event_type)
+    ex = get_exercise(ex_id, nlu.surgery_type)
     if not ex:
         return None
 
@@ -300,11 +298,11 @@ def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if not ex_id:
         return None
 
-    ex = get_exercise(ex_id, nlu.event_type)
+    ex = get_exercise(ex_id, nlu.surgery_type)
     if not ex:
         return None
 
@@ -320,11 +318,11 @@ def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_weight_bearing_gate(nlu: NLUOutput) -> Optional[RuleResult]:
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if not ex_id:
         return None
 
-    ex = get_exercise(ex_id, nlu.event_type)
+    ex = get_exercise(ex_id, nlu.surgery_type)
     if not ex:
         return None
 
@@ -352,11 +350,11 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
             confidence_delta=+0.2,
         )
 
-    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.event_type)
+    ex_id = resolve_exercise_id(nlu.requested_exercise_text, nlu.surgery_type)
     if not ex_id:
         return None
 
-    ex = get_exercise(ex_id, nlu.event_type)
+    ex = get_exercise(ex_id, nlu.surgery_type)
     if not ex:
         return None
 
@@ -369,14 +367,14 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
     )
 
 
-def rule_clarify_event_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]:
+def rule_clarify_surgery_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]:
     loaded = {"squats", "lunges", "leg press", "step ups", "wall sit"}
     req = (nlu.requested_exercise_text or "").strip().lower()
-    if req and req in loaded and nlu.event_type == "unknown":
+    if req and req in loaded and nlu.surgery_type == "unknown":
         return RuleResult(
             action=Action.CLARIFY,
-            rule_id="R_CLARIFY_EVENT_001",
-            rationale="To check safety for loaded exercises, I need to know the event type.",
+            rule_id="R_CLARIFY_SURGERY_TYPE_001",
+            rationale="To check safety for loaded exercises, I need to know the surgery type.",
             citations=["SRC_RULEBOOK_001#event_type_required_for_loaded"],
             confidence_delta=-0.1,
         )
@@ -393,5 +391,5 @@ RULES = [
     rule_weight_bearing_gate,
     rule_selfcare_guidance,
     rule_recommend_if_all_clear,
-    rule_clarify_event_type_for_loaded,
+    rule_clarify_surgery_type_for_loaded,
 ]
