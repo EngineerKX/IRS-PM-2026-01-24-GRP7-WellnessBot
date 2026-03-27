@@ -23,9 +23,6 @@ class ConversationState:
     # Optional profile/preferences
     equipment_available: List[str] = field(default_factory=list)
 
-    # Planner memory
-    exercise_history: List[Dict[str, Any]] = field(default_factory=list)
-
     # Meta / dialog control
     negated_terms: List[str] = field(default_factory=list)
     asked_slots: List[str] = field(default_factory=list)
@@ -47,7 +44,6 @@ class ConversationState:
             "red_flag_terms": self.red_flag_terms,
             "symptom_flags": self.symptom_flags,
             "equipment_available": self.equipment_available,
-            "exercise_history": self.exercise_history,
             "last_user_text": self.last_user_text,
             "turn_count": self.turn_count,
             "history": self.history,
@@ -62,29 +58,21 @@ class ConversationState:
             return ConversationState()
 
         return ConversationState(
-            # ✅ BACKWARD COMPATIBILITY
             surgery_type=d.get("surgery_type", d.get("event_type", "unknown")),
-
             surgery_date=d.get("surgery_date", "") or "",
             weeks_since_event=d.get("weeks_since_event"),
             pain_score=d.get("pain_score"),
             swelling_level=d.get("swelling_level", "unknown"),
             weight_bearing=d.get("weight_bearing", "unknown"),
             requested_exercise_text=d.get("requested_exercise_text", "") or "",
-
             symptom_screen_done=bool(d.get("symptom_screen_done", False)),
             red_flag_terms=d.get("red_flag_terms", []) or [],
             symptom_flags=d.get("symptom_flags", []) or [],
-
             equipment_available=d.get("equipment_available", []) or [],
-            exercise_history=d.get("exercise_history", []) or [],
-
             last_user_text=d.get("last_user_text", "") or "",
             turn_count=int(d.get("turn_count", 0) or 0),
             history=d.get("history", []) or [],
-
             negated_terms=d.get("negated_terms", []) or [],
             asked_slots=d.get("asked_slots", []) or [],
-
             last_expected_slot=d.get("last_expected_slot", "") or "",
         )

@@ -39,12 +39,16 @@ EXERCISE_KEYWORDS = [
     "single leg balance",
 ]
 
-EVENT_KEYWORDS: Dict[str, str] = {
-    "acl": "acl_surgery",
+SURGERY_KEYWORDS: Dict[str, str] = {
+    "post arthroscopic knee surgery": "post_arthroscopic_knee_surgery",
+    "arthroscopic knee surgery": "post_arthroscopic_knee_surgery",
+    "arthroscopy": "post_arthroscopic_knee_surgery",
+    "acl reconstruction": "acl_reconstruction",
+    "acl surgery": "acl_reconstruction",
+    "acl": "acl_reconstruction",
     "tkr": "tkr",
     "knee replacement": "tkr",
-    "meniscus": "meniscus",
-    "sprain": "sprain",
+    "sprain": "sprain_non_surgical",
 }
 
 
@@ -87,7 +91,7 @@ def _extract_swelling(text: str) -> str:
     for level in ["mild", "moderate", "severe"]:
         if re.search(rf"\b{level}\s+swelling\b|\bswelling\s+is\s+{level}\b|\b{level}\b", t):
             return level
-    if "swelling" in t:
+    if any(term in t for term in ["swelling", "swollen", "swell", "puffy"]):
         return "unknown"
     return "unknown"
 
@@ -105,14 +109,16 @@ def _extract_weight_bearing(text: str) -> str:
     return "unknown"
 
 
-def _extract_event_type(text: str) -> str:
+def _extract_surgery_type(text: str) -> str:
     t = text.lower()
-    for k, v in EVENT_KEYWORDS.items():
+
+    for k, v in SURGERY_KEYWORDS.items():
         if k in t:
             return v
+
     if "surgery" in t or "operation" in t:
-        # still unknown surgery type
         return "unknown"
+
     return "unknown"
 
 
@@ -138,7 +144,7 @@ def _is_negated(term: str, text: str) -> bool:
 
     for m in re.finditer(re.escape(term_l), t):
         start = m.start()
-        window = t[max(0, start - 25) : start]
+        window = t[max(0, start - 25): start]
         if re.search(r"\b(no|not|without|denies|deny|never)\b", window):
             return True
     return False
@@ -194,7 +200,7 @@ def extract_mock(user_text: str) -> NLUOutput:
     pain = _extract_pain_score(user_text)
     swelling = _extract_swelling(user_text)
     wb = _extract_weight_bearing(user_text)
-    event_type = _extract_event_type(user_text)
+    surgery_type = _extract_surgery_type(user_text)
     req_ex = _extract_requested_exercise(user_text)
 
     red_flags, negated = _extract_red_flags(user_text)
@@ -205,13 +211,13 @@ def extract_mock(user_text: str) -> NLUOutput:
     if not req_ex:
         missing.append("requested_exercise_text")
 
-    # OPTIONAL: only require event_type if you want protocol-specific behavior
-    # if event_type == "unknown":
-    #     missing.append("event_type")
+    # OPTIONAL: only require surgery_type if you want protocol-specific behavior
+    # if surgery_type == "unknown":
+    #     missing.append("surgery_type")
 
     return NLUOutput(
         weeks_since_event=weeks,
-        event_type=event_type,
+        surgery_type=surgery_type,
         requested_exercise_text=req_ex,
         pain_score=pain,
         swelling_level=swelling,

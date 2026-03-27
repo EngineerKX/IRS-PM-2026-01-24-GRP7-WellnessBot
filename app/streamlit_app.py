@@ -14,6 +14,11 @@ from wellnessbot.storage.profile_store import (
     save_profile,
     delete_profile,
 )
+from wellnessbot.storage.exercise_history_store import (
+    load_exercise_history,
+    append_exercise_history,
+    clear_exercise_history,
+)
 
 TOOL_OPTIONS = [
     "chair",
@@ -67,21 +72,15 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     if surgery_type in (None, "", "unknown"):
         slot_name = "surgery_type"
         question = (
-            "What type of surgery or injury did you have? "
+            "What surgery type did you have? "
             "(Post-arthroscopic knee surgery / ACL reconstruction / TKR / sprain non-surgical)"
         )
     elif not surgery_date:
         slot_name = "surgery_date"
-        question = (
-            "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
-            "or how many weeks/days ago."
-        )
+        question = "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) or how many weeks/days ago."
     else:
         slot_name = "symptom_screen"
-        question = (
-            "Are you having any symptoms today, such as fever, excessive bleeding, "
-            "unusual swelling, or pain? If none, just say 'none'."
-        )
+        question = "Are you having any symptoms today, such as fever, excessive bleeding, unusual swelling, or pain? If none, just say 'none'."
 
     return {
         "role": "assistant",
@@ -108,7 +107,6 @@ def _profile_to_conv_state(profile: dict) -> dict:
         "surgery_type": profile.get("surgery_type", profile.get("event_type", "unknown")),
         "surgery_date": profile.get("surgery_date", ""),
         "equipment_available": profile.get("equipment_available", []) or [],
-        "exercise_history": profile.get("exercise_history", []) or [],
     }
 
 
@@ -125,7 +123,6 @@ def _save_current_profile() -> None:
         "surgery_type": conv.get("surgery_type", conv.get("event_type", "unknown")),
         "surgery_date": conv.get("surgery_date", ""),
         "equipment_available": conv.get("equipment_available", []) or [],
-        "exercise_history": conv.get("exercise_history", []) or [],
     }
     save_profile(profile)
 
@@ -162,8 +159,6 @@ def _render_scroll_to_bottom_if_requested() -> None:
         f"""
         <script>
         (function() {{
-            const reqId = {request_id};
-
             function getTarget(doc) {{
                 const selectors = [
                     '[data-testid="stAppViewContainer"]',
@@ -293,23 +288,24 @@ def _handle_pipeline_result(result: dict) -> None:
             st.session_state.chat_ended = True
 
         planner = (result.get("audit_trace") or {}).get("planner") or {}
-        ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+        ex_id = planner.get("exercise_id")
+        ex_name = planner.get("exercise_name") or ex_id
+        profile_id = (st.session_state.get("profile_id") or "").strip()
 
-        if ex_name:
-            history = st.session_state.conv_state.get("exercise_history", []) or []
-            history.append(
-                {
+        if profile_id and ex_id:
+            append_exercise_history(
+                profile_id=profile_id,
+                record={
                     "timestamp_utc": (result.get("audit_trace") or {}).get("timestamp_utc"),
-                    "exercise_id": ex_name,
+                    "exercise_id": ex_id,
+                    "exercise_name": ex_name,
                     "phase_id": planner.get("phase_id"),
-                    "status": "recommended",
                     "pain_score": st.session_state.conv_state.get("pain_score"),
                     "swelling_level": st.session_state.conv_state.get("swelling_level"),
                     "action": result.get("decision", {}).get("action"),
-                }
+                },
+                keep_last=50,
             )
-            st.session_state.conv_state["exercise_history"] = history
-            _save_current_profile()
 
 
 st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="centered")
@@ -372,6 +368,12 @@ if "scroll_request_id" not in st.session_state:
 if "last_rendered_scroll_request_id" not in st.session_state:
     st.session_state.last_rendered_scroll_request_id = 0
 
+if "pending_user_text" not in st.session_state:
+    st.session_state.pending_user_text = None
+
+if "processing_turn" not in st.session_state:
+    st.session_state.processing_turn = False
+
 # Sync widget state BEFORE widgets are created
 if st.session_state.sync_core_profile_from_conv:
     _sync_core_profile_widgets_from_state()
@@ -418,6 +420,8 @@ if load_clicked:
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = True
             st.session_state.show_create_profile = False
+            st.session_state.pending_user_text = None
+            st.session_state.processing_turn = False
             _request_scroll_to_bottom()
             st.success(f"Loaded profile: {profile['profile_id']}")
             st.rerun()
@@ -440,6 +444,7 @@ with col_p2:
                 st.warning("No active profile to delete.")
             else:
                 delete_profile(active_profile_id)
+                clear_exercise_history(active_profile_id)
 
                 st.session_state.profile_id = ""
                 st.session_state.display_name = ""
@@ -453,6 +458,8 @@ with col_p2:
                 st.session_state.show_create_profile = False
                 st.session_state.editable_surgery_type = "unknown"
                 st.session_state.editable_surgery_date = ""
+                st.session_state.pending_user_text = None
+                st.session_state.processing_turn = False
 
                 st.success(f"Deleted profile: {active_profile_id}")
                 st.rerun()
@@ -500,6 +507,8 @@ if st.session_state.show_create_profile:
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = True
                 st.session_state.show_create_profile = False
+                st.session_state.pending_user_text = None
+                st.session_state.processing_turn = False
                 _request_scroll_to_bottom()
                 st.success(f"Profile created: {profile['profile_id']}")
                 st.rerun()
@@ -544,6 +553,8 @@ if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_
     st.session_state.feedback_state = {}
     st.session_state.chat_ended = False
     st.session_state.profile_loaded = True
+    st.session_state.pending_user_text = None
+    st.session_state.processing_turn = False
     _request_scroll_to_bottom()
     st.success("Core profile updated.")
     st.rerun()
@@ -584,7 +595,6 @@ with st.container():
                 ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
-                "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.feedback_state = {}
@@ -593,6 +603,8 @@ with st.container():
             st.session_state.sync_equipment_from_conv = True
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
+            st.session_state.pending_user_text = None
+            st.session_state.processing_turn = False
             _save_current_profile()
             _request_scroll_to_bottom()
             st.rerun()
@@ -606,7 +618,6 @@ with st.container():
                 ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
-                "exercise_history": st.session_state.conv_state.get("exercise_history", []),
             }
             st.session_state.chat = [build_welcome_message(preserved_profile)]
             st.session_state.feedback_state = {}
@@ -615,6 +626,8 @@ with st.container():
             st.session_state.sync_equipment_from_conv = True
             st.session_state.chat_ended = False
             st.session_state.profile_loaded = bool(st.session_state.get("profile_id"))
+            st.session_state.pending_user_text = None
+            st.session_state.processing_turn = False
             _save_current_profile()
             _request_scroll_to_bottom()
             st.rerun()
@@ -723,43 +736,67 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Input box / single-run processing ---
+# --- Input box / staged processing ---
 if not st.session_state.profile_loaded:
     st.info("Please load a profile or create a new profile before starting the chat.")
 elif st.session_state.chat_ended:
     st.info("This chat has ended. Please click **End conversation / Restart** or **Clear chat only** to begin a new case.")
 else:
+    # Stage 2: process pending turn AFTER user + thinking are already visible
+    if st.session_state.processing_turn and st.session_state.pending_user_text:
+        pending_text = st.session_state.pending_user_text
+
+        profile_id = (st.session_state.get("profile_id") or "").strip()
+        history_for_planner = load_exercise_history(profile_id)
+
+        conv_state_for_run = dict(st.session_state.conv_state or {})
+        conv_state_for_run["exercise_history"] = history_for_planner
+
+        result = run_pipeline(
+            user_text=pending_text,
+            conv_state=conv_state_for_run,
+            force_mock_nlu=st.session_state.mock_toggle,
+        )
+
+        _handle_pipeline_result(result)
+        assistant_text = _build_assistant_text(result)
+
+        # Replace the last assistant placeholder
+        if (
+            st.session_state.chat
+            and st.session_state.chat[-1]["role"] == "assistant"
+            and st.session_state.chat[-1]["result"] is None
+            and st.session_state.chat[-1]["text"] == "Thinking…"
+        ):
+            st.session_state.chat[-1] = {
+                "role": "assistant",
+                "text": assistant_text,
+                "result": result,
+            }
+        else:
+            st.session_state.chat.append(
+                {"role": "assistant", "text": assistant_text, "result": result}
+            )
+
+        st.session_state.pending_user_text = None
+        st.session_state.processing_turn = False
+
+        _request_scroll_to_bottom()
+        st.rerun()
+
+    # Stage 1: accept new user input and show it immediately via chat history
     user_text = st.chat_input("Type your message here")
 
     if user_text:
         st.session_state.chat.append(
             {"role": "user", "text": user_text, "result": None}
         )
-
-        with st.chat_message("user"):
-            st.write(user_text)
-
-        with st.chat_message("assistant"):
-            thinking_placeholder = st.empty()
-            thinking_placeholder.write("Thinking…")
-
-        result = run_pipeline(
-            user_text=user_text,
-            conv_state=st.session_state.conv_state,
-            force_mock_nlu=st.session_state.mock_toggle,
-        )
-
-        _handle_pipeline_result(result)
-
-        assistant_text = _build_assistant_text(result)
-
-        thinking_placeholder.write(assistant_text)
-
         st.session_state.chat.append(
-            {"role": "assistant", "text": assistant_text, "result": result}
+            {"role": "assistant", "text": "Thinking…", "result": None}
         )
 
-        _request_scroll_to_bottom()
+        st.session_state.pending_user_text = user_text
+        st.session_state.processing_turn = True
         st.rerun()
 
 # --- Hard bottom anchor ---

@@ -2,10 +2,9 @@
   "profile_id": "Demo_user4",
   "display_name": "d4",
   "surgery_type": "post_arthroscopic_knee_surgery",
-  "surgery_date": "2026-03-26",
+  "surgery_date": "2026-02-20",
   "equipment_available": [
     "strap",
     "sliding_board"
-  ],
-  "exercise_history": []
+  ]
 }

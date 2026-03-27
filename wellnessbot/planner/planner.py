@@ -38,7 +38,7 @@ def plan(
     equipment_available = equipment_available or []
     exercise_history = exercise_history or []
 
-    cands = list_exercises_for_phase(nlu.event_type, phase_id)
+    cands = list_exercises_for_phase(nlu.surgery_type, phase_id)
 
     if not cands:
         return {"plan": None, "notes": ["No safe exercises found for this phase."]}
@@ -64,8 +64,8 @@ def plan(
     }
 
 
-def plan_alternatives(event_type: str, phase_id: str, top_k: int = 5) -> Dict:
-    cands = list_exercises_for_phase(event_type, phase_id)
+def plan_alternatives(surgery_type: str, phase_id: str, top_k: int = 5) -> Dict:
+    cands = list_exercises_for_phase(surgery_type, phase_id)
 
     return {
         "type": "alternatives",

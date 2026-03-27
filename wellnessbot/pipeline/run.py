@@ -47,6 +47,9 @@ def run_pipeline(
     # --------------------------------------------
     conv = ConversationState.from_dict(conv_state or {})
 
+    # Planner history is now injected externally from file-based storage.
+    planner_history = (conv_state or {}).get("exercise_history", []) or []
+
     # Figure out what slot the system was expecting BEFORE this turn
     # Peek only; do not mutate asked_slots here.
     prior_missing_slots = compute_missing_slots(conv)
@@ -201,7 +204,7 @@ def run_pipeline(
         "phase_id": state.phase_id,
         "exercise_allowed_phases": ex.allowed_phases if ex else None,
         "equipment_available": conv.equipment_available,
-        "exercise_history_size": len(conv.exercise_history),
+        "exercise_history_size": len(planner_history),
     }
 
     # --------------------------------------------
@@ -220,7 +223,7 @@ def run_pipeline(
                 nlu_full,
                 state.phase_id,
                 equipment_available=conv.equipment_available,
-                exercise_history=conv.exercise_history,
+                exercise_history=planner_history,
             )
         else:
             planner_out = {"plan": None, "notes": ["No phase available for planning."]}
@@ -235,20 +238,6 @@ def run_pipeline(
 
     elif final_action in (Action.FORBID, Action.ESCALATE):
         planner_out = None
-
-    # --------------------------------------------
-    # Update exercise history after recommendation
-    # --------------------------------------------
-    if final_action == Action.RECOMMEND and planner_out and planner_out.get("exercise_id"):
-        conv.exercise_history.append(
-            {
-                "exercise_id": planner_out["exercise_id"],
-                "turn": conv.turn_count,
-            }
-        )
-
-        # keep only recent history to avoid unbounded growth
-        conv.exercise_history = conv.exercise_history[-5:]
 
     # --------------------------------------------
     # Confidence (prototype)
