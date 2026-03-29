@@ -7,6 +7,7 @@ from typing import Any, Dict
 from wellnessbot.kg.kg import get_exercise, get_protocol_for_event, resolve_exercise_id
 from wellnessbot.nlu.mock_extractor import extract_mock
 from wellnessbot.nlu.openai_extractor import extract_with_fallback
+from wellnessbot.nlu.claude_extractor import extract_claude_with_fallback
 from wellnessbot.nlu.schema import NLUOutput
 from wellnessbot.planner.planner import plan
 from wellnessbot.rules.engine import evaluate_rules
@@ -44,8 +45,13 @@ def run_pipeline(user_text: str, force_mock_nlu: bool = False) -> Dict[str, Any]
     use_mock = force_mock_nlu or mock_env
 
     # --- NLU ---
+    # NLU_PROVIDER selects the LLM backend: "openai" (default) or "claude"
+    nlu_provider = os.getenv("NLU_PROVIDER", "openai").strip().lower()
+
     if use_mock:
         nlu: NLUOutput = extract_mock(user_text)
+    elif nlu_provider == "claude":
+        nlu = extract_claude_with_fallback(user_text=user_text, timeout_s=12.0)
     else:
         nlu = extract_with_fallback(user_text=user_text, timeout_s=12.0)
 

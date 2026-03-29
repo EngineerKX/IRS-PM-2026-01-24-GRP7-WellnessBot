@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 SwellingLevel = Literal["none", "mild", "moderate", "severe", "unknown"]
 WeightBearing = Literal["none", "partial", "full", "unknown"]
 EventType = Literal["acl_surgery", "tkr", "meniscus", "sprain", "unknown"]
-NLUSource = Literal["mock", "openai", "mock_fallback"]
+NLUSource = Literal["mock", "openai", "mock_fallback", "claude", "claude_fallback"]
 
 
 class NLUOutput(BaseModel):

@@ -1,4 +1,20 @@
-# Load .env into environment variables
+# ==============================================================================
+# run_streamlit.ps1 — Launch script for the WellnessBot Streamlit application
+#
+# Usage:   .\run_streamlit.ps1
+# What it does:
+#   1. Loads environment variables from .env file
+#   2. Sets the working directory to the project root
+#   3. Activates the Python virtual environment (if one exists)
+#   4. Sets PYTHONPATH so the wellnessbot package can be imported
+#   5. Defaults to MOCK_NLU=1 (regex-based NLU, no OpenAI key needed)
+#   6. Launches the Streamlit web app
+# ==============================================================================
+
+# --- Step 1: Load .env file into process-level environment variables ----------
+# Reads each line of .env, skips comments (#) and blank lines,
+# splits on the first '=' to get key-value pairs, and sets them
+# as environment variables for this PowerShell process only.
 Get-Content .env | ForEach-Object {
     if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
     $parts = $_ -split '=', 2
@@ -9,6 +25,8 @@ Get-Content .env | ForEach-Object {
     }
 }
 
+# Second pass: same purpose but uses a regex to parse .env lines.
+# This handles edge cases like values containing '=' characters.
 if (Test-Path ".env") {
   Get-Content .env | ForEach-Object {
     if ($_ -match "^\s*([^#][^=]*)=(.*)$") {
@@ -19,25 +37,39 @@ if (Test-Path ".env") {
   }
 }
 
+# --- Step 2: Strict error handling --------------------------------------------
+# Stop execution immediately if any command fails (similar to 'set -e' in bash)
 $ErrorActionPreference = "Stop"
 
-# Ensure we run from repo root
+# --- Step 3: Set working directory to project root ----------------------------
+# Resolves the directory where this script lives, ensuring all relative paths
+# (like .env, .venv, app/) work correctly regardless of where you call it from.
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
 
-# Activate venv if exists
+# --- Step 4: Activate Python virtual environment (if present) -----------------
+# Looks for a .venv folder in the project root. If found, activates it so that
+# the correct Python interpreter and installed packages are used.
 if (Test-Path ".\.venv\Scripts\Activate.ps1") {
   . .\.venv\Scripts\Activate.ps1
 }
 
-# Make package importable
+# --- Step 5: Set PYTHONPATH ---------------------------------------------------
+# Adds the project root to PYTHONPATH so Python can find the 'wellnessbot' package.
+# Without this, imports like 'from wellnessbot.pipeline.run import ...' would fail.
 $env:PYTHONPATH = "$repoRoot"
 
-# Optional: set MOCK_NLU if not already set
+# --- Step 6: Default to mock NLU mode ----------------------------------------
+# If MOCK_NLU is not already set (e.g., via .env), default to "1" (enabled).
+# MOCK_NLU=1 uses regex-based extraction (no OpenAI API key required).
+# MOCK_NLU=0 uses OpenAI for NLU (requires OPENAI_API_KEY in .env).
 if (-not $env:MOCK_NLU) { $env:MOCK_NLU = "1" }
 
-# Optional placeholders for corporate proxy overrides (only if you need)
+# --- Optional: Corporate proxy overrides (uncomment if needed) ----------------
 # $env:HTTP_PROXY="http://proxy:port"
 # $env:HTTPS_PROXY="http://proxy:port"
 
+# --- Step 7: Launch the Streamlit app -----------------------------------------
+# Starts the Streamlit web server, which opens the chat UI in your browser.
+# The app is defined in app/streamlit_app.py.
 streamlit run .\app\streamlit_app.py
