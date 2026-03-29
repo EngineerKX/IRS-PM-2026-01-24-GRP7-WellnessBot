@@ -1,0 +1,200 @@
+[
+  {
+    "timestamp_utc": "2026-03-27T17:53:21.000939+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T17:54:10.725230+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T17:54:38.669032+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:33:02.919695+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:36:55.370380+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:37:22.817268+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:37:34.580437+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:37:52.969594+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:44:25.386963+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:44:36.732552+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:45:48.988962+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:45:56.633609+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:46:06.051481+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:46:21.603728+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:48:11.839158+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:48:20.789026+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:48:29.245805+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:48:45.118839+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:48:55.669582+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:49:03.991772+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:49:17.370628+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-27T18:49:25.014791+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  }
+]

@@ -1,20 +1,4 @@
-# ==============================================================================
-# run_streamlit.ps1 — Launch script for the WellnessBot Streamlit application
-#
-# Usage:   .\run_streamlit.ps1
-# What it does:
-#   1. Loads environment variables from .env file
-#   2. Sets the working directory to the project root
-#   3. Activates the Python virtual environment (if one exists)
-#   4. Sets PYTHONPATH so the wellnessbot package can be imported
-#   5. Defaults to MOCK_NLU=1 (regex-based NLU, no OpenAI key needed)
-#   6. Launches the Streamlit web app
-# ==============================================================================
-
-# --- Step 1: Load .env file into process-level environment variables ----------
-# Reads each line of .env, skips comments (#) and blank lines,
-# splits on the first '=' to get key-value pairs, and sets them
-# as environment variables for this PowerShell process only.
+# Load .env into environment variables
 Get-Content .env | ForEach-Object {
     if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
     $parts = $_ -split '=', 2
@@ -25,8 +9,6 @@ Get-Content .env | ForEach-Object {
     }
 }
 
-# Second pass: same purpose but uses a regex to parse .env lines.
-# This handles edge cases like values containing '=' characters.
 if (Test-Path ".env") {
   Get-Content .env | ForEach-Object {
     if ($_ -match "^\s*([^#][^=]*)=(.*)$") {
@@ -37,8 +19,6 @@ if (Test-Path ".env") {
   }
 }
 
-# --- Step 2: Strict error handling --------------------------------------------
-# Stop execution immediately if any command fails (similar to 'set -e' in bash)
 $ErrorActionPreference = "Stop"
 
 # --- Step 3: Set working directory to project root ----------------------------

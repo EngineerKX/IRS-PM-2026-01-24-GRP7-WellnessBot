@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from wellnessbot.nlu.mock_extractor import extract_mock
@@ -16,36 +18,352 @@ except Exception:  # pragma: no cover
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
-_SYSTEM_PROMPT = """You are an NLU extraction component.
+_SYSTEM_PROMPT = """
+You are a structured NLU extraction component.
+
 You MUST output a single JSON object ONLY (no markdown, no prose).
-Extract structured fields from the user's text.
+
+This is turn-level extraction.
+
+You will receive:
+1. The current user message
+2. The slot the system asked for (expected_slot)
+
 Rules:
-- If a field is unknown, use null (or "unknown" for enums).
-- weeks_since_event: float weeks. Convert days to weeks (days/7).
-- pain_score: integer 0..10 if present.
+- Extract information ONLY from the current user message.
+- Do NOT use conversation history.
+- If expected_slot is provided, interpret short answers accordingly.
+- If a field is not mentioned, return null (or "unknown" for enums, false for booleans, [] for arrays).
+- Do NOT make decisions.
+- Do NOT suggest exercises.
+- Do NOT ask clarifying questions.
+- Do NOT explain anything.
+
+Examples:
+
+expected_slot = pain_score
+User: "1"
+→ pain_score = 1
+
+expected_slot = pain_score
+User: "2"
+→ pain_score = 2
+
+expected_slot = pain_score
+User: "3"
+→ pain_score = 3
+
+expected_slot = swelling_level
+User: "1"
+→ swelling_level = "mild"
+
+expected_slot = swelling_level
+User: "2"
+→ swelling_level = "moderate"
+
+expected_slot = swelling_level
+User: "3"
+→ swelling_level = "severe"
+
+expected_slot = swelling_level
+User: "none"
+→ swelling_level = "none"
+
+expected_slot = symptom_screen
+User: "none"
+→ symptom_screen_done = true
+→ symptom_flags = ["none"]
+→ red_flag_terms = []
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "pain"
+→ symptom_screen_done = true
+→ symptom_flags = ["pain"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "swelling"
+→ symptom_screen_done = true
+→ symptom_flags = ["swelling"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "pain and swelling"
+→ symptom_screen_done = true
+→ symptom_flags = ["pain", "swelling"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "fever"
+→ symptom_screen_done = true
+→ symptom_flags = ["fever"]
+→ red_flag_terms = ["fever"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "excessive bleeding"
+→ symptom_screen_done = true
+→ symptom_flags = ["excessive_bleeding"]
+→ red_flag_terms = ["excessive bleeding"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "fever, pain, swell"
+→ symptom_screen_done = true
+→ symptom_flags = ["fever", "pain", "swelling"]
+→ red_flag_terms = ["fever"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "puffy"
+→ symptom_screen_done = true
+→ symptom_flags = ["swelling"]
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "2026-02-01"
+→ symptom_screen_done = false
+→ symptom_flags = []
+→ requested_exercise_text = ""
+
+expected_slot = weeks_since_event
+User: "2 weeks"
+→ weeks_since_event = 2
+
+expected_slot = surgery_date
+User: "2026-02-01"
+→ surgery_date = "2026-02-01"
+→ requested_exercise_text = ""
+
+expected_slot = symptom_screen
+User: "my knee feels puffy"
+→ symptom_screen_done = true
+→ symptom_flags = ["swelling"]
+
+expected_slot = symptom_screen
+User: "a bit swollen after walking"
+→ symptom_screen_done = true
+→ symptom_flags = ["swelling"]
+
+expected_slot = symptom_screen
+User: "sharp pain when bending"
+→ symptom_screen_done = true
+→ symptom_flags = ["pain"]
+
+expected_slot = symptom_screen
+User: "fever and swelling"
+→ symptom_screen_done = true
+→ symptom_flags = ["fever", "swelling"]
+→ red_flag_terms = ["fever"]
+
+expected_slot = symptom_screen
+User: "no pain"
+→ symptom_flags = []
+→ red_flag_terms = []
+→ negated_terms = ["pain"]
+
+expected_slot = symptom_screen
+User: "no swelling"
+→ symptom_flags = []
+→ red_flag_terms = []
+→ negated_terms = ["swelling"]
+
+expected_slot = symptom_screen
+User: "no pain but swelling"
+→ symptom_flags = ["swelling"]
+→ red_flag_terms = []
+→ negated_terms = ["pain"]
+
+expected_slot = symptom_screen
+User: "no fever"
+→ symptom_flags = []
+→ red_flag_terms = []
+→ negated_terms = ["fever"]
+
+expected_slot = symptom_screen
+User: "my leg is swelling"
+→ symptom_flags = ["swelling"]
+
+expected_slot = symptom_screen
+User: "pain and swell"
+→ symptom_flags = ["pain", "swelling"]
+
+expected_slot = symptom_screen
+User: "I feel puffy"
+→ symptom_flags = ["swelling"]
+
+expected_slot = symptom_screen
+User: "my knee hurts and is swollen"
+→ symptom_flags = ["pain", "swelling"]
+
+expected_slot = surgery_type
+User: "post arthroscopic knee surgery"
+→ surgery_type = "post_arthroscopic_knee_surgery"
+
+expected_slot = surgery_type
+User: "acl reconstruction"
+→ surgery_type = "acl_reconstruction"
+
+expected_slot = surgery_type
+User: "tkr"
+→ surgery_type = "tkr"
+
+expected_slot = surgery_type
+User: "sprain"
+→ surgery_type = "sprain_non_surgical"
+
+Field definitions:
+- weeks_since_event: float weeks (convert days to weeks if explicitly given).
+- surgery_type: one of ["post_arthroscopic_knee_surgery","acl_reconstruction","tkr","sprain_non_surgical","unknown"].
+- requested_exercise_text: normalized short phrase ONLY if the user explicitly mentions an exercise they want to do. Otherwise return an empty string "".
+- Never use "unknown" for requested_exercise_text. Use "" instead.
+- pain_score: integer 0–10 if present.
 - swelling_level: one of ["none","mild","moderate","severe","unknown"].
 - weight_bearing: one of ["none","partial","full","unknown"].
-- event_type: one of ["acl_surgery","tkr","meniscus","sprain","unknown"].
-- requested_exercise_text: short normalized phrase like "squats", "heel slides", "quad sets", "straight leg raise", etc.
-- red_flag_terms: list of red flags mentioned (non-negated).
-- negated_terms: list of terms that are explicitly negated (e.g., "no fever" => "fever" in negated_terms).
-- missing_fields: list of missing field names from:
-  ["weeks_since_event","event_type","requested_exercise_text","pain_score","swelling_level","weight_bearing"].
+- symptom_screen_done: optional extraction hint only. The downstream policy layer decides conversation progress.
+- symptom_flags: list from ["pain","swelling","fever","excessive_bleeding","none"] based only on the current message.
+- red_flag_terms: list of explicitly mentioned red flag terms (non-negated), such as fever, excessive bleeding, wound drainage, pus, chest pain, shortness of breath, cannot bear weight, knee locking.
+- negated_terms: list of explicitly negated terms.
 - nlu_source: must be "openai".
+- surgery_date: date string in YYYY-MM-DD if explicitly provided.
+
+Important:
+- A date-only answer like "2026-02-01" is NOT a symptom answer.
+- "none" in symptom screening means no symptoms and should set symptom_screen_done=true and symptom_flags=["none"].
+- Normalize synonyms:
+  - "swell", "swollen", "puffy" -> "swelling"
+  - "bleed", "bleeding" -> "excessive bleeding"
+- Do not infer swelling severity from words like "swelling", "swollen", "swell", or "puffy".
+Only set swelling_level when the user explicitly gives severity, such as:
+- mild / moderate / severe
+- 1 / 2 / 3 when expected_slot = swelling_level
 """
 
 
-def apply_missing_fields_policy(nlu: NLUOutput) -> NLUOutput:
+def convert_date_to_weeks_if_needed(user_text: str, nlu: NLUOutput) -> NLUOutput:
     """
-    Deterministic missing-fields policy (do not trust the model for this).
+    If the user provided a date (YYYY-MM-DD), store it and convert it to weeks_since_event
+    when weeks_since_event is not already present.
     """
-    missing = []
-    if nlu.weeks_since_event is None:
-        missing.append("weeks_since_event")
-    if not (nlu.requested_exercise_text or "").strip():
-        missing.append("requested_exercise_text")
+    match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", user_text)
+    if not match:
+        return nlu
 
-    nlu.missing_fields = missing
+    date_str = match.group(1)
+
+    if not (getattr(nlu, "surgery_date", "") or "").strip():
+        nlu.surgery_date = date_str
+
+    if nlu.weeks_since_event is not None:
+        return nlu
+
+    try:
+        surgery_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        delta_days = (now - surgery_date).days
+        weeks = round(delta_days / 7, 2)
+
+        if weeks >= 0:
+            nlu.weeks_since_event = weeks
+    except Exception:
+        pass
+
+    return nlu
+
+
+def resolve_symptom_conflicts(nlu: NLUOutput) -> NLUOutput:
+    flags = set(nlu.symptom_flags or [])
+    red = set(nlu.red_flag_terms or [])
+    neg = set(x.strip().lower() for x in (nlu.negated_terms or []))
+
+    if "pain" in neg:
+        flags.discard("pain")
+
+    if "swelling" in neg:
+        flags.discard("swelling")
+
+    if "fever" in neg:
+        flags.discard("fever")
+        red = {x for x in red if x.strip().lower() != "fever"}
+
+    if "excessive bleeding" in neg or "bleeding" in neg:
+        flags.discard("excessive_bleeding")
+        red = {
+            x for x in red
+            if x.strip().lower() not in {"excessive bleeding", "bleeding"}
+        }
+
+    # if there are positive symptom flags, remove "none"
+    if len(flags - {"none"}) > 0 and "none" in flags:
+        flags.discard("none")
+
+    nlu.symptom_flags = sorted(flags)
+    nlu.red_flag_terms = sorted(red)
+    return nlu
+
+
+def normalize_expected_slot_numeric(
+    user_text: str,
+    expected_slot: str | None,
+    nlu: NLUOutput,
+) -> NLUOutput:
+    text = (user_text or "").strip().lower()
+
+    # -------- PAIN SCORE --------
+    if expected_slot == "pain_score":
+        if text.isdigit():
+            value = int(text)
+
+            # enforce valid range (your system uses 1–3)
+            if value in {0, 1, 2, 3}:
+                nlu.pain_score = value
+
+        return nlu
+
+    # -------- SWELLING LEVEL --------
+    if expected_slot == "swelling_level":
+        if text == "1":
+            nlu.swelling_level = "mild"
+        elif text == "2":
+            nlu.swelling_level = "moderate"
+        elif text == "3":
+            nlu.swelling_level = "severe"
+
+        return nlu
+
+    return nlu
+
+
+def normalize_symptom_screen_if_needed(
+    user_text: str,
+    expected_slot: str | None,
+    nlu: NLUOutput,
+) -> NLUOutput:
+    """
+    Minimal deterministic normalization for explicit symptom-screen replies.
+    Does NOT decide conversation progress.
+    """
+    if expected_slot != "symptom_screen":
+        return nlu
+
+    text = (user_text or "").strip().lower()
+
+    # Only patch absolute explicit answer if model failed to extract anything useful.
+    has_any_signal = bool(nlu.symptom_flags or nlu.red_flag_terms or nlu.negated_terms)
+    if has_any_signal:
+        return nlu
+
+    if text in {"none", "no", "no symptoms"}:
+        nlu.symptom_flags = ["none"]
+
+    return nlu
+
+
+def normalize_requested_exercise_if_needed(nlu: NLUOutput) -> NLUOutput:
+    text = (nlu.requested_exercise_text or "").strip().lower()
+    if text in {"unknown", "none", "n/a", "na", "nil"}:
+        nlu.requested_exercise_text = ""
     return nlu
 
 
@@ -55,10 +373,17 @@ def _build_response_schema() -> Dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "weeks_since_event": {"type": ["number", "null"]},
-            "event_type": {
+            "surgery_type": {
                 "type": "string",
-                "enum": ["acl_surgery", "tkr", "meniscus", "sprain", "unknown"],
+                "enum": [
+                    "post_arthroscopic_knee_surgery",
+                    "acl_reconstruction",
+                    "tkr",
+                    "sprain_non_surgical",
+                    "unknown",
+                ],
             },
+            "surgery_date": {"type": "string"},
             "requested_exercise_text": {"type": "string"},
             "pain_score": {"type": ["integer", "null"], "minimum": 0, "maximum": 10},
             "swelling_level": {
@@ -69,6 +394,14 @@ def _build_response_schema() -> Dict[str, Any]:
                 "type": "string",
                 "enum": ["none", "partial", "full", "unknown"],
             },
+            "symptom_screen_done": {"type": "boolean"},
+            "symptom_flags": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["pain", "swelling", "fever", "excessive_bleeding", "none"],
+                },
+            },
             "red_flag_terms": {"type": "array", "items": {"type": "string"}},
             "negated_terms": {"type": "array", "items": {"type": "string"}},
             "missing_fields": {"type": "array", "items": {"type": "string"}},
@@ -76,11 +409,14 @@ def _build_response_schema() -> Dict[str, Any]:
         },
         "required": [
             "weeks_since_event",
-            "event_type",
+            "surgery_type",
+            "surgery_date",
             "requested_exercise_text",
             "pain_score",
             "swelling_level",
             "weight_bearing",
+            "symptom_screen_done",
+            "symptom_flags",
             "red_flag_terms",
             "negated_terms",
             "missing_fields",
@@ -90,11 +426,6 @@ def _build_response_schema() -> Dict[str, Any]:
 
 
 def _env_openai_client() -> Any:
-    """
-    Return OpenAI client instance.
-    Type is Any to avoid Pylance 'variable not allowed in type expression'
-    because OpenAI may be None depending on optional import.
-    """
     if OpenAI is None:
         raise RuntimeError("openai package not installed. Run: pip install openai")
 
@@ -105,7 +436,11 @@ def _env_openai_client() -> Any:
     return OpenAI(api_key=api_key)
 
 
-def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
+def extract_openai(
+    user_text: str,
+    expected_slot: str | None = None,
+    timeout_s: float = 12.0,
+) -> NLUOutput:
     client = _env_openai_client()
     schema = _build_response_schema()
 
@@ -113,8 +448,14 @@ def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
         model=MODEL,
         temperature=0,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": user_text},
+            {
+                "role": "system",
+                "content": _SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": f"expected_slot: {expected_slot}\n\nuser_message:\n{user_text}",
+            },
         ],
         response_format={
             "type": "json_schema",
@@ -128,19 +469,43 @@ def extract_openai(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
         raise RuntimeError("OpenAI returned empty content")
 
     data = json.loads(content)
-    data["nlu_source"] = "openai"  # enforce
+    data["nlu_source"] = "openai"
 
     nlu = NLUOutput.model_validate(data)
-    nlu = apply_missing_fields_policy(nlu)
+    nlu = convert_date_to_weeks_if_needed(user_text, nlu)
+    nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
+    nlu = normalize_requested_exercise_if_needed(nlu)
+    print("DEBUG RAW NLU FROM OPENAI:", nlu.model_dump())
+    nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
+    print("DEBUG NLU AFTER NUMERIC NORMALIZATION:", nlu.model_dump())
+    nlu = resolve_symptom_conflicts(nlu)
     return nlu
 
 
-def extract_with_fallback(user_text: str, timeout_s: float = 12.0) -> NLUOutput:
-    try:
-        return extract_openai(user_text=user_text, timeout_s=timeout_s)
-    except Exception as e:
-        print("OpenAI extraction failed:", type(e).__name__, repr(e))
-        nlu = extract_mock(user_text)
-        nlu.nlu_source = "mock_fallback"
-        nlu = apply_missing_fields_policy(nlu)
-        return nlu
+def extract_with_fallback(
+    user_text: str,
+    expected_slot: str | None = None,
+    timeout_s: float = 12.0,
+) -> NLUOutput:
+    nlu = extract_openai(
+        user_text=user_text,
+        expected_slot=expected_slot,
+        timeout_s=timeout_s,
+    )
+
+    # Always run deterministic post-processing
+    nlu = convert_date_to_weeks_if_needed(user_text, nlu)
+    nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
+    nlu = normalize_requested_exercise_if_needed(nlu)
+    nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
+    print(
+        "DEBUG POSTPROCESS:",
+        {
+            "expected_slot": expected_slot,
+            "user_text": user_text,
+            "pain_score": nlu.pain_score,
+        },
+    )
+    nlu = resolve_symptom_conflicts(nlu)
+
+    return nlu

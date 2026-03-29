@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from wellnessbot.kg.kg import phase_from_weeks
@@ -10,23 +10,25 @@ from wellnessbot.nlu.schema import NLUOutput
 @dataclass
 class InferredState:
     phase_id: Optional[str]
-    risk_flags: List[str]
-    missing_fields: List[str]
+    risk_flags: List[str] = field(default_factory=list)
+    missing_fields: List[str] = field(default_factory=list)
 
 
 def infer_state(nlu: NLUOutput) -> InferredState:
+    risk_flags: List[str] = []
+    missing_fields: List[str] = []
+
     phase_id = None
     if nlu.weeks_since_event is not None:
-        phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.event_type)
+        phase_id = phase_from_weeks(nlu.weeks_since_event, nlu.surgery_type)
+    else:
+        missing_fields.append("weeks_since_event")
 
-    risk = []
     if nlu.red_flag_terms:
-        risk.append("red_flags_present")
-    if nlu.pain_score is not None and nlu.pain_score >= 7:
-        risk.append("high_pain")
+        risk_flags.extend(nlu.red_flag_terms)
 
     return InferredState(
         phase_id=phase_id,
-        risk_flags=risk,
-        missing_fields=list(nlu.missing_fields),
+        risk_flags=sorted(set(risk_flags)),
+        missing_fields=missing_fields,
     )
