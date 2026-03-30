@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp_utc": "2026-03-30T07:51:52.231998+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "mild",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T07:53:21.422615+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T07:54:22.211505+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "moderate",
+    "action": "RECOMMEND"
+  }
+]
