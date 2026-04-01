@@ -132,8 +132,6 @@ redflag_policies:
     action: supportive_sequence
     action_steps:
       - prescribed_medicine_reminder
-      - pain_check
-      - swell_check
       - stop_exercise
 
   - redflag_id: RF_002
@@ -153,7 +151,6 @@ redflag_policies:
     action: supportive_sequence
     action_steps:
       - prescribed_medicine_reminder
-      - swell_check
       - exercise_downgrade
 
   - redflag_id: RF_005
@@ -163,7 +160,6 @@ redflag_policies:
     action: supportive_sequence
     action_steps:
       - prescribed_medicine_reminder
-      - swell_check
       - stop_exercise
 
   - redflag_id: RF_006
@@ -173,7 +169,6 @@ redflag_policies:
     action: supportive_sequence
     action_steps:
       - pain_killer
-      - swell_check
       - exercise_downgrade
 
   - redflag_id: RF_007
@@ -183,7 +178,6 @@ redflag_policies:
     action: supportive_sequence
     action_steps:
       - pain_killer
-      - swell_check
       - stop_exercise
 
   - redflag_id: RF_008
@@ -258,14 +252,14 @@ selfcare_actions:
   - selfcare_id: WARM_P3
     phase_id: P3
     swell_level: none
-    care_type: warm
+    care_type: warm_hot_towel
     duration_minutes: 10
     frequency_condition: before_exercise
 
   - selfcare_id: WARM_P4
     phase_id: P4
     swell_level: none
-    care_type: warm
+    care_type: warm_walk
     duration_minutes: 10
     frequency_condition: before_exercise
 

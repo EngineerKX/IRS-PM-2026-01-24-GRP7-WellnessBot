@@ -47,7 +47,7 @@ SURGERY_TYPE_OPTIONS = [
 
 SURGERY_TYPE_LABELS = {
     "unknown": "Unknown",
-    "post_arthroscopic_knee_surgery": "Post-arthroscopic knee surgery",
+    "post_arthroscopic_knee_surgery": "Arthroscopic knee surgery",
     "acl_reconstruction": "ACL reconstruction",
     "tkr": "TKR",
     "sprain_non_surgical": "Sprain (non-surgical)",
@@ -62,6 +62,23 @@ def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
 
+def _result_should_end_chat(result: dict) -> bool:
+    if result.get("mode") != "final":
+        return False
+
+    action = (result.get("decision") or {}).get("action")
+    conv_state = result.get("conv_state") or {}
+    pending_followup_slots = conv_state.get("pending_followup_slots", []) or []
+
+    if action in {"RECOMMEND", "ESCALATE"}:
+        return True
+
+    if action == "FORBID":
+        return len(pending_followup_slots) == 0
+
+    return False
+
+
 def build_welcome_message(profile: dict | None = None) -> dict:
     profile = profile or {}
 
@@ -70,10 +87,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
 
     if surgery_type in (None, "", "unknown"):
         slot_name = "surgery_type"
-        question = (
-            "What surgery type did you have? "
-            "(Post-arthroscopic knee surgery / ACL reconstruction / TKR / sprain non-surgical)"
-        )
+        question = "What surgery type did you have? (e.g. Arthroscopic knee surgery)"
     elif not surgery_date:
         slot_name = "surgery_date"
         question = (
@@ -83,8 +97,8 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     else:
         slot_name = "symptom_screen"
         question = (
-            "Are you having any symptoms today, such as fever, excessive bleeding, "
-            "unusual swelling, or pain? If none, just say 'none'."
+            "Are you having any symptoms today, such as fever or excessive bleeding? "
+            "If none, just say 'none'."
         )
 
     return {
@@ -196,7 +210,25 @@ def _build_assistant_text(result: dict) -> str:
     top_rule = next((r for r in rules if r.get("action") == action), None)
     if top_rule is None and rules:
         top_rule = rules[0]
-    rationale = top_rule.get("rationale") if top_rule else "Decision generated."
+
+    primary_rationale = top_rule.get("rationale") if top_rule else "Decision generated."
+
+    extra_lines = []
+    for r in rules:
+        if r is top_rule:
+            continue
+
+        rid = r.get("rule_id", "")
+        rationale = (r.get("rationale") or "").strip()
+        if not rationale:
+            continue
+
+        if rid.startswith("R_SELFCARE_"):
+            extra_lines.append(f"**Supportive care:** {rationale}")
+
+    extra_block = ""
+    if extra_lines:
+        extra_block = "\n\n" + "\n\n".join(extra_lines)
 
     rule_ids = result["decision"].get("rule_ids", [])
     rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
@@ -221,10 +253,9 @@ def _build_assistant_text(result: dict) -> str:
             if stop:
                 planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
 
-    assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
+    assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}{rule_line}{cite_line}"
 
-    terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
-    if action in terminal_actions:
+    if _result_should_end_chat(result):
         assistant_text += (
             "\n\n---\n\n"
             "✅ **Chat ended.**\n\n"
@@ -248,10 +279,7 @@ def _handle_pipeline_result(result: dict) -> None:
     mode = result.get("mode", "final")
 
     if mode == "final":
-        terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
-        action = result.get("decision", {}).get("action")
-        if action in terminal_actions:
-            st.session_state.chat_ended = True
+        st.session_state.chat_ended = _result_should_end_chat(result)
 
         planner = (result.get("audit_trace") or {}).get("planner") or {}
         ex_id = planner.get("exercise_id")
@@ -278,7 +306,6 @@ st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="ce
 st.title("Wellnessbot - Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
 
-# --- Session state bootstrap ---
 if "conv_state" not in st.session_state:
     st.session_state.conv_state = {}
 
@@ -340,7 +367,6 @@ if "chat_input_epoch" not in st.session_state:
 if "quick_reply" not in st.session_state:
     st.session_state.quick_reply = None
 
-# Sync widget state BEFORE widgets are created
 if st.session_state.sync_core_profile_from_conv:
     _sync_core_profile_widgets_from_state()
     st.session_state.sync_core_profile_from_conv = False
@@ -349,7 +375,6 @@ if st.session_state.sync_equipment_from_conv:
     _sync_equipment_multiselect_from_state()
     st.session_state.sync_equipment_from_conv = False
 
-# --- Sidebar: Profile Memory ---
 st.sidebar.header("Profile Memory")
 
 existing_profiles = list_profiles()
@@ -480,7 +505,6 @@ else:
 
 st.sidebar.divider()
 
-# --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
 edited_surgery_type = st.sidebar.selectbox(
@@ -527,7 +551,6 @@ if st.session_state.profile_loaded:
     st.session_state.conv_state["equipment_available"] = selected_tools
     _save_current_profile()
 
-# --- Controls (top bar) ---
 with st.container():
     col1, col2, col3 = st.columns([1, 1, 1])
 
@@ -575,7 +598,6 @@ with st.container():
 
 st.divider()
 
-# --- Render chat history ---
 for i, msg in enumerate(st.session_state.chat):
     if msg["role"] == "user":
         with st.chat_message("user"):
@@ -677,7 +699,6 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Input box / staged processing ---
 if not st.session_state.profile_loaded:
     st.info("Please load a profile or create a new profile before starting the chat.")
 else:
@@ -719,7 +740,6 @@ else:
         st.session_state.processing_turn = False
         st.rerun()
 
-    # --- Quick reply buttons for clarify turns ---
     asked_slot = _get_latest_asked_slot()
 
     if (
@@ -729,20 +749,31 @@ else:
     ):
         if asked_slot == "pain_score":
             st.markdown("**Select pain level:**")
-            c1, c2, c3 = st.columns(3)
+            c0, c1, c2, c3 = st.columns(4)
+
+            if c0.button("None", key="quick_pain_none", use_container_width=True):
+                st.session_state.quick_reply = "no pain"
+                st.rerun()
+
             if c1.button("Mild (1)", key="quick_pain_1", use_container_width=True):
                 st.session_state.quick_reply = "pain 1"
                 st.rerun()
+
             if c2.button("Moderate (2)", key="quick_pain_2", use_container_width=True):
                 st.session_state.quick_reply = "pain 2"
                 st.rerun()
+
             if c3.button("Severe (3)", key="quick_pain_3", use_container_width=True):
                 st.session_state.quick_reply = "pain 3"
                 st.rerun()
 
         elif asked_slot == "swelling_level":
             st.markdown("**Select swelling level:**")
-            c1, c2, c3 = st.columns(3)
+            c0, c1, c2, c3 = st.columns(4)
+
+            if c0.button("None", key="quick_swell_none", use_container_width=True):
+                st.session_state.quick_reply = "no swelling"
+                st.rerun()
 
             if c1.button("Mild (1)", key="quick_swell_1", use_container_width=True):
                 st.session_state.quick_reply = "swelling 1"
@@ -755,7 +786,6 @@ else:
             if c3.button("Severe (3)", key="quick_swell_3", use_container_width=True):
                 st.session_state.quick_reply = "swelling 3"
                 st.rerun()
-
 
     chat_placeholder = (
         "Type your message here"

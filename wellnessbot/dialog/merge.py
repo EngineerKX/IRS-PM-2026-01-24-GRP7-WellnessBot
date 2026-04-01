@@ -36,7 +36,7 @@ def merge_turn(
 
     if getattr(nlu_turn, "red_flag_terms", None):
         existing = set(conv.red_flag_terms or [])
-        existing.update(nlu_turn.red_flag_terms)
+        existing.update(x.strip().lower() for x in nlu_turn.red_flag_terms if str(x).strip())
         conv.red_flag_terms = sorted(existing)
 
     if getattr(nlu_turn, "symptom_flags", None):
@@ -51,7 +51,6 @@ def merge_turn(
             else:
                 conv.symptom_flags = sorted(existing_flags)
         else:
-            # Positive symptom evidence overrides/removes "none"
             merged_flags = (existing_flags | new_flags) - {"none"}
             conv.symptom_flags = sorted(merged_flags)
 

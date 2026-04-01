@@ -8,7 +8,8 @@ from wellnessbot.rules.ruleset import DOMINANCE, RULES
 
 
 def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
-    fired: List[RuleResult] = []
+    fired_non_recommend: List[RuleResult] = []
+    fired_recommend: List[RuleResult] = []
 
     # Pass 1: collect everything except RECOMMEND
     for fn in RULES:
@@ -17,12 +18,30 @@ def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
             continue
         if rr.action == Action.RECOMMEND:
             continue
-        fired.append(rr)
+        fired_non_recommend.append(rr)
 
-    # If any ESCALATE/FORBID/CLARIFY fired, finalize without RECOMMEND noise
-    if fired:
-        final = sorted(fired, key=lambda r: DOMINANCE[r.action], reverse=True)[0].action
-        return final, fired
+    if fired_non_recommend:
+        final = sorted(
+            fired_non_recommend,
+            key=lambda r: DOMINANCE[r.action],
+            reverse=True,
+        )[0].action
+
+        # Hard stop on ESCALATE: do not add recommend/self-care noise
+        if final == Action.ESCALATE:
+            return final, fired_non_recommend
+
+        # Soft stop on FORBID / CLARIFY:
+        # still allow supportive RECOMMEND rules to append,
+        # but final action remains non-recommend.
+        for fn in RULES:
+            rr = fn(nlu)
+            if rr is None:
+                continue
+            if rr.action == Action.RECOMMEND:
+                fired_recommend.append(rr)
+
+        return final, fired_non_recommend + fired_recommend
 
     # Pass 2: only now allow RECOMMEND rules
     for fn in RULES:
@@ -30,19 +49,16 @@ def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
         if rr is None:
             continue
         if rr.action == Action.RECOMMEND:
-            fired.append(rr)
+            fired_recommend.append(rr)
 
-    if not fired:
-        fired.append(
-            RuleResult(
-                action=Action.CLARIFY,
-                rule_id="R_CLARIFY_DEFAULT_001",
-                rationale="Insufficient information to make a safe recommendation.",
-                citations=["SRC_RULEBOOK_001#default_clarify"],
-                confidence_delta=-0.2,
-            )
+    if not fired_recommend:
+        fallback = RuleResult(
+            action=Action.CLARIFY,
+            rule_id="R_CLARIFY_DEFAULT_001",
+            rationale="Insufficient information to make a safe recommendation.",
+            citations=["SRC_RULEBOOK_001#default_clarify"],
+            confidence_delta=-0.2,
         )
-        return Action.CLARIFY, fired
+        return Action.CLARIFY, [fallback]
 
-    # If we’re here, it's recommend-only
-    return Action.RECOMMEND, fired
+    return Action.RECOMMEND, fired_recommend

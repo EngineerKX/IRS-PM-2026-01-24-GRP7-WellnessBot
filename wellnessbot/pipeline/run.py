@@ -42,22 +42,12 @@ def run_pipeline(
     4) Else -> run deterministic decision engine
     """
 
-    # --------------------------------------------
-    # Conversation memory (load existing state first)
-    # --------------------------------------------
     conv = ConversationState.from_dict(conv_state or {})
-
-    # Planner history is now injected externally from file-based storage.
     planner_history = (conv_state or {}).get("exercise_history", []) or []
 
-    # Figure out what slot the system was expecting BEFORE this turn
-    # Peek only; do not mutate asked_slots here.
     prior_missing_slots = compute_missing_slots(conv)
     expected_slot = prior_missing_slots[0] if prior_missing_slots else None
 
-    # --------------------------------------------
-    # Decide NLU mode
-    # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
     conv.last_expected_slot = expected_slot or ""
@@ -71,56 +61,21 @@ def run_pipeline(
             timeout_s=12.0,
         )
 
-    # --------------------------------------------
-    # Merge current turn into conversation state
-    # --------------------------------------------
     conv = merge_turn(conv, nlu_turn, user_text, expected_slot=expected_slot)
-
-    # --------------------------------------------
-    # EARLY RED FLAG CHECK (before clarify)
-    # --------------------------------------------
-    from wellnessbot.rules.ruleset import rule_red_flags_escalate
-
-    rr = rule_red_flags_escalate(nlu_turn)
-
-    if rr is not None:
-        audit_trace = {
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "mode": "final",
-            "notes": ["Early escalation due to red flag before clarification."],
-        }
-
-        result = {
-            "mode": "final",
-            "user_text": user_text,
-            "nlu": nlu_turn.model_dump(),
-            "decision": {
-                "action": rr.action.value,
-                "confidence": 0.9,
-                "rule_ids": [rr.rule_id],
-                "citations": rr.citations,
-            },
-            "audit_trace": {
-                **audit_trace,
-                "rules_fired": [
-                    {
-                        "rule_id": rr.rule_id,
-                        "action": rr.action.value,
-                        "rationale": rr.rationale,
-                        "citations": rr.citations,
-                        "confidence_delta": rr.confidence_delta,
-                    }
-                ],
-            },
-            "conv_state": conv.to_dict(),
-        }
-
-        return result
 
     # --------------------------------------------
     # CLARIFY MODE (deterministic hard gate)
     # --------------------------------------------
+    # Important: do this BEFORE early-finalizing FORBID,
+    # so P1_1 fever can continue pain/swelling follow-up.
     missing_slots = compute_missing_slots(conv)
+
+    print("DEBUG AFTER MERGE / BEFORE CLARIFY:")
+    print("symptom_flags =", conv.symptom_flags)
+    print("pain_score =", conv.pain_score)
+    print("swelling_level =", conv.swelling_level)
+    print("pending_followup_slots =", conv.pending_followup_slots)
+    print("missing_slots =", missing_slots)
 
     if missing_slots:
         next_q = next_question_for_missing(conv, missing_slots)
@@ -180,6 +135,46 @@ def run_pipeline(
     state = infer_state(nlu_full)
 
     # --------------------------------------------
+    # Hard early escalation only
+    # --------------------------------------------
+    from wellnessbot.rules.ruleset import rule_red_flags_escalate
+
+    rr = rule_red_flags_escalate(nlu_full)
+    if rr is not None and rr.action == Action.ESCALATE:
+        audit_trace = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "mode": "final",
+            "notes": ["Early escalation due to red flag before planning."],
+        }
+
+        result = {
+            "mode": "final",
+            "user_text": user_text,
+            "nlu": nlu_full.model_dump(),
+            "decision": {
+                "action": rr.action.value,
+                "confidence": 0.9,
+                "rule_ids": [rr.rule_id],
+                "citations": rr.citations,
+            },
+            "audit_trace": {
+                **audit_trace,
+                "rules_fired": [
+                    {
+                        "rule_id": rr.rule_id,
+                        "action": rr.action.value,
+                        "rationale": rr.rationale,
+                        "citations": rr.citations,
+                        "confidence_delta": rr.confidence_delta,
+                    }
+                ],
+            },
+            "conv_state": conv.to_dict(),
+        }
+
+        return result
+
+    # --------------------------------------------
     # KG snapshot (audit)
     # --------------------------------------------
     protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
@@ -205,6 +200,9 @@ def run_pipeline(
         "exercise_allowed_phases": ex.allowed_phases if ex else None,
         "equipment_available": conv.equipment_available,
         "exercise_history_size": len(planner_history),
+        "exercise_blocked": conv.exercise_blocked,
+        "block_reason": conv.block_reason,
+        "pending_followup_slots": conv.pending_followup_slots,
     }
 
     # --------------------------------------------
@@ -239,9 +237,6 @@ def run_pipeline(
     elif final_action in (Action.FORBID, Action.ESCALATE):
         planner_out = None
 
-    # --------------------------------------------
-    # Confidence (prototype)
-    # --------------------------------------------
     conf = 0.5
     for r in fired_rules:
         conf += r.confidence_delta

@@ -53,6 +53,18 @@ expected_slot = pain_score
 User: "3"
 → pain_score = 3
 
+expected_slot = pain_score
+User: "0"
+→ pain_score = 0
+
+expected_slot = pain_score
+User: "no pain"
+→ pain_score = 0
+
+expected_slot = pain_score
+User: "none"
+→ pain_score = 0
+
 expected_slot = swelling_level
 User: "1"
 → swelling_level = "mild"
@@ -69,11 +81,22 @@ expected_slot = swelling_level
 User: "none"
 → swelling_level = "none"
 
+expected_slot = swelling_level
+User: "no swelling"
+→ swelling_level = "none"
+
+expected_slot = swelling_level
+User: "0"
+→ swelling_level = "none"
+
 expected_slot = symptom_screen
 User: "none"
 → symptom_screen_done = true
 → symptom_flags = ["none"]
 → red_flag_terms = []
+→ negated_terms = []
+→ pain_score = null
+→ swelling_level = "unknown"
 → requested_exercise_text = ""
 
 expected_slot = symptom_screen
@@ -231,6 +254,7 @@ Field definitions:
 Important:
 - A date-only answer like "2026-02-01" is NOT a symptom answer.
 - "none" in symptom screening means no symptoms and should set symptom_screen_done=true and symptom_flags=["none"].
+- When expected_slot = symptom_screen, do NOT fill pain_score or swelling_level unless the user explicitly gives those values.
 - Normalize synonyms:
   - "swell", "swollen", "puffy" -> "swelling"
   - "bleed", "bleeding" -> "excessive bleeding"
@@ -294,7 +318,6 @@ def resolve_symptom_conflicts(nlu: NLUOutput) -> NLUOutput:
             if x.strip().lower() not in {"excessive bleeding", "bleeding"}
         }
 
-    # if there are positive symptom flags, remove "none"
     if len(flags - {"none"}) > 0 and "none" in flags:
         flags.discard("none")
 
@@ -310,19 +333,23 @@ def normalize_expected_slot_numeric(
 ) -> NLUOutput:
     text = (user_text or "").strip().lower()
 
-    # -------- PAIN SCORE --------
     if expected_slot == "pain_score":
+        if text in {"no pain", "none", "0"}:
+            nlu.pain_score = 0
+            return nlu
+
         if text.isdigit():
             value = int(text)
-
-            # enforce valid range (your system uses 1–3)
             if value in {0, 1, 2, 3}:
                 nlu.pain_score = value
 
         return nlu
 
-    # -------- SWELLING LEVEL --------
     if expected_slot == "swelling_level":
+        if text in {"none", "no swelling", "0"}:
+            nlu.swelling_level = "none"
+            return nlu
+
         if text == "1":
             nlu.swelling_level = "mild"
         elif text == "2":
@@ -341,21 +368,31 @@ def normalize_symptom_screen_if_needed(
     nlu: NLUOutput,
 ) -> NLUOutput:
     """
-    Minimal deterministic normalization for explicit symptom-screen replies.
-    Does NOT decide conversation progress.
+    Deterministic normalization for explicit symptom-screen replies.
+    Critically, symptom-screen answers must not leak into pain/swelling slots.
     """
     if expected_slot != "symptom_screen":
         return nlu
 
     text = (user_text or "").strip().lower()
 
-    # Only patch absolute explicit answer if model failed to extract anything useful.
+    # Hard reset slot-specific fields for symptom-screen turn.
+    # Symptom screen should identify symptoms, not fill severity slots.
+    nlu.pain_score = None
+    nlu.swelling_level = "unknown"
+
     has_any_signal = bool(nlu.symptom_flags or nlu.red_flag_terms or nlu.negated_terms)
     if has_any_signal:
+        if text in {"none", "no", "no symptoms"}:
+            nlu.symptom_flags = ["none"]
+            nlu.red_flag_terms = []
+            nlu.negated_terms = []
         return nlu
 
     if text in {"none", "no", "no symptoms"}:
         nlu.symptom_flags = ["none"]
+        nlu.red_flag_terms = []
+        nlu.negated_terms = []
 
     return nlu
 
@@ -475,9 +512,7 @@ def extract_openai(
     nlu = convert_date_to_weeks_if_needed(user_text, nlu)
     nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
     nlu = normalize_requested_exercise_if_needed(nlu)
-    print("DEBUG RAW NLU FROM OPENAI:", nlu.model_dump())
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
-    print("DEBUG NLU AFTER NUMERIC NORMALIZATION:", nlu.model_dump())
     nlu = resolve_symptom_conflicts(nlu)
     return nlu
 
@@ -493,19 +528,21 @@ def extract_with_fallback(
         timeout_s=timeout_s,
     )
 
-    # Always run deterministic post-processing
     nlu = convert_date_to_weeks_if_needed(user_text, nlu)
     nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
     nlu = normalize_requested_exercise_if_needed(nlu)
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
+    nlu = resolve_symptom_conflicts(nlu)
+
     print(
         "DEBUG POSTPROCESS:",
         {
             "expected_slot": expected_slot,
             "user_text": user_text,
             "pain_score": nlu.pain_score,
+            "swelling_level": nlu.swelling_level,
+            "symptom_flags": nlu.symptom_flags,
         },
     )
-    nlu = resolve_symptom_conflicts(nlu)
 
     return nlu

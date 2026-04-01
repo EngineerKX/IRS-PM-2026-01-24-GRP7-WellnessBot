@@ -28,6 +28,25 @@ def _current_phase(nlu: NLUOutput) -> Optional[str]:
     return phase_from_weeks(nlu.weeks_since_event, nlu.surgery_type)
 
 
+def _has_non_recommend_blockers(nlu: NLUOutput) -> bool:
+    """
+    Internal helper for recommend rules only.
+    Re-checks blocking conditions so recommend rules do not leak when
+    FORBID / ESCALATE / CLARIFY should dominate.
+    """
+    blockers = [
+        rule_red_flags_escalate(nlu),
+        rule_missing_weeks(nlu),
+        rule_unknown_exercise_clarify(nlu),
+        rule_phase_forbid(nlu),
+        rule_pain_gate(nlu),
+        rule_swelling_gate(nlu),
+        rule_weight_bearing_gate(nlu),
+        rule_clarify_surgery_type_for_loaded(nlu),
+    ]
+    return any(rr is not None and rr.action != Action.RECOMMEND for rr in blockers)
+
+
 def _match_redflag_policy(nlu: NLUOutput):
     phase_id = _current_phase(nlu)
     if not phase_id:
@@ -73,8 +92,6 @@ def _match_redflag_policy(nlu: NLUOutput):
     if not matches:
         return None
 
-    # Choose strongest policy:
-    # escalate beats supportive_sequence
     def policy_rank(p):
         if p.action == "escalate":
             return 2
@@ -95,14 +112,11 @@ def _match_selfcare_actions(nlu: NLUOutput):
 
     matched = []
 
-    # derive swelling state for self-care lookup
     swelling_value = nlu.swelling_level
 
     if swelling_value in (None, "", "unknown"):
         symptom_flags = set(x.strip().lower() for x in (nlu.symptom_flags or []))
 
-        # If symptom screening is complete and swelling is not present,
-        # treat as "none" for self-care lookup.
         if getattr(nlu, "symptom_screen_done", False) and "swelling" not in symptom_flags:
             swelling_value = "none"
         else:
@@ -155,30 +169,14 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
     if policy.action == "supportive_sequence":
         steps = ", ".join(policy.action_steps or [])
 
-        has_pain = nlu.pain_score is not None
-        has_swelling = (nlu.swelling_level or "unknown") != "unknown"
-
-        care_text = ""
-
-        # ONLY include ice/self-care details if pain or swelling present
-        if has_pain or has_swelling:
-            actions = _match_selfcare_actions(nlu)
-            if actions:
-                parts = []
-                for a in actions:
-                    parts.append(
-                        f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
-                    )
-                care_text = " Self-care: " + "; ".join(parts) + "."
-
         return RuleResult(
             action=Action.FORBID,
             rule_id=f"R_FORBID_SUPPORTIVE_{policy.redflag_id}",
-            rationale=f"Do not proceed with exercise yet. Supportive care required first: {steps}.{care_text}",
-            citations=[
-                "SRC_RULEBOOK_001#supportive_sequence",
-                "SRC_RULEBOOK_001#selfcare_actions",
-            ],
+            rationale=(
+                "Do not proceed with exercise yet. "
+                f"Supportive follow-up required first: {steps}."
+            ),
+            citations=["SRC_RULEBOOK_001#supportive_sequence"],
             confidence_delta=-0.3,
         )
 
@@ -186,10 +184,11 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 
 def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
-    # never provide generic self-care if red flags are present
-    if nlu.red_flag_terms:
-        return None
-
+    """
+    Non-blocking supportive guidance.
+    This may appear alongside FORBID, but should not appear with ESCALATE
+    because engine stops on ESCALATE.
+    """
     has_symptom_signal = (
         nlu.pain_score is not None
         or (nlu.swelling_level or "unknown") != "unknown"
@@ -198,42 +197,54 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
     if not has_symptom_signal:
         return None
 
-    phase_id = _current_phase(nlu)
-
-    # STRONG rule for early phase (P1_1)
-    if phase_id == "P1_1":
-        actions = _match_selfcare_actions(nlu)
-        if actions:
-            texts = []
-            for a in actions:
-                texts.append(
-                    f"ice and elevate for {a.duration_minutes} minutes ({a.frequency_condition})"
-                )
-
-            return RuleResult(
-                action=Action.RECOMMEND,
-                rule_id="R_SELFCARE_P1_STRONG_001",
-                rationale="Early-phase recovery requires swelling control: " + "; ".join(texts),
-                citations=["SRC_RULEBOOK_001#selfcare_actions"],
-                confidence_delta=+0.2,
-            )
-
     actions = _match_selfcare_actions(nlu)
     if not actions:
         return None
 
+    phase_id = _current_phase(nlu)
+
     texts = []
     for a in actions:
-        texts.append(
-            f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
-        )
+        care_type = (a.care_type or "").strip().lower()
+
+        if care_type in {"ice", "ice_elevate"}:
+            texts.append(
+                f"ice and elevate for {a.duration_minutes} minutes ({a.frequency_condition})"
+            )
+        elif care_type == "warm_hot_towel":
+            texts.append(
+                f"warm up with a hot towel for {a.duration_minutes} minutes ({a.frequency_condition})"
+            )
+
+        elif care_type == "warm_walk":
+            texts.append(
+                f"warm up by walking for {a.duration_minutes} minutes ({a.frequency_condition})"
+            )
+
+        elif care_type == "warm":
+            texts.append(
+                f"warm up for {a.duration_minutes} minutes ({a.frequency_condition})"
+            )
+        else:
+            texts.append(
+                f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
+            )
+
+    if phase_id == "P1_1":
+        rationale = "Early-phase supportive care: " + "; ".join(texts)
+        rule_id = "R_SELFCARE_P1_SUPPORT_001"
+        delta = +0.15
+    else:
+        rationale = "Supportive self-care guidance: " + "; ".join(texts)
+        rule_id = "R_SELFCARE_GUIDANCE_001"
+        delta = +0.05
 
     return RuleResult(
         action=Action.RECOMMEND,
-        rule_id="R_SELFCARE_GUIDANCE_001",
-        rationale="Self-care guidance: " + "; ".join(texts),
+        rule_id=rule_id,
+        rationale=rationale,
         citations=["SRC_RULEBOOK_001#selfcare_actions"],
-        confidence_delta=+0.05,
+        confidence_delta=delta,
     )
 
 
@@ -339,6 +350,10 @@ def rule_weight_bearing_gate(nlu: NLUOutput) -> Optional[RuleResult]:
 
 def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
+        return None
+
+    # Do not leak exercise recommendation when a blocker exists.
+    if _has_non_recommend_blockers(nlu):
         return None
 
     if not (nlu.requested_exercise_text or "").strip():

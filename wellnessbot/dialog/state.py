@@ -23,6 +23,11 @@ class ConversationState:
     # Optional profile/preferences
     equipment_available: List[str] = field(default_factory=list)
 
+    # Special-case decision/dialog control
+    exercise_blocked: bool = False
+    block_reason: str = ""
+    pending_followup_slots: List[str] = field(default_factory=list)
+
     # Meta / dialog control
     negated_terms: List[str] = field(default_factory=list)
     asked_slots: List[str] = field(default_factory=list)
@@ -44,6 +49,9 @@ class ConversationState:
             "red_flag_terms": self.red_flag_terms,
             "symptom_flags": self.symptom_flags,
             "equipment_available": self.equipment_available,
+            "exercise_blocked": self.exercise_blocked,
+            "block_reason": self.block_reason,
+            "pending_followup_slots": self.pending_followup_slots,
             "last_user_text": self.last_user_text,
             "turn_count": self.turn_count,
             "history": self.history,
@@ -69,6 +77,9 @@ class ConversationState:
             red_flag_terms=d.get("red_flag_terms", []) or [],
             symptom_flags=d.get("symptom_flags", []) or [],
             equipment_available=d.get("equipment_available", []) or [],
+            exercise_blocked=bool(d.get("exercise_blocked", False)),
+            block_reason=d.get("block_reason", "") or "",
+            pending_followup_slots=d.get("pending_followup_slots", []) or [],
             last_user_text=d.get("last_user_text", "") or "",
             turn_count=int(d.get("turn_count", 0) or 0),
             history=d.get("history", []) or [],
