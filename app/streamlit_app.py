@@ -19,6 +19,9 @@ from wellnessbot.storage.exercise_history_store import (
     clear_exercise_history,
 )
 
+from datetime import datetime, timezone
+from wellnessbot.kg.kg import phase_from_weeks, get_protocol_for_surgery_type
+
 TOOL_OPTIONS = [
     "chair",
     "resistance_band",
@@ -85,6 +88,36 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     surgery_type = profile.get("surgery_type", profile.get("event_type", "unknown"))
     surgery_date = profile.get("surgery_date", "")
 
+    phase_id = None
+    phase_name = None
+    weeks_since_event = None
+
+    if surgery_type not in (None, "", "unknown") and surgery_date:
+        try:
+            dt = datetime.strptime(surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+                phase_id = phase_from_weeks(weeks_since_event, surgery_type)
+
+                protocol = get_protocol_for_surgery_type(surgery_type)
+                if protocol and phase_id:
+                    for ph in protocol.phases:
+                        if ph.phase_id == phase_id:
+                            phase_name = ph.name
+                            break
+        except Exception:
+            phase_id = None
+            phase_name = None
+            weeks_since_event = None
+
+    phase_line = ""
+    if phase_id:
+        if phase_name:
+            phase_line = f"**Current phase:** {phase_id} ({phase_name})\n\n"
+        else:
+            phase_line = f"**Current phase:** {phase_id}\n\n"
+
     if surgery_type in (None, "", "unknown"):
         slot_name = "surgery_type"
         question = "What surgery type did you have? (e.g. Arthroscopic knee surgery)"
@@ -106,6 +139,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
         "text": (
             "👋 Welcome to the Wellnessbot.\n\n"
             "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
+            f"{phase_line}"
             f"{question}"
         ),
         "result": {
@@ -115,6 +149,9 @@ def build_welcome_message(profile: dict | None = None) -> dict:
             "audit_trace": {
                 "mode": "clarify",
                 "asked_slot": slot_name,
+                "phase_id": phase_id,
+                "phase_name": phase_name,
+                "weeks_since_event": weeks_since_event,
                 "notes": ["Initial system greeting and first question."],
             },
         },

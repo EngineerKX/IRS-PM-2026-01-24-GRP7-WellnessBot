@@ -9,6 +9,7 @@ from wellnessbot.kg.kg import (
     get_exercise,
     get_protocol_for_surgery_type,
     resolve_exercise_id,
+    phase_from_weeks,
 )
 from wellnessbot.nlu.mock_extractor import extract_mock
 from wellnessbot.nlu.openai_extractor import extract_with_fallback
@@ -26,6 +27,40 @@ from wellnessbot.dialog.policy import compute_missing_slots, next_question_for_m
 
 def _make_interaction_id(user_text: str, ts: str) -> str:
     return hashlib.sha256(f"{ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
+
+
+def _phase_banner_from_conv(conv: ConversationState) -> str:
+    surgery_type = conv.surgery_type
+    if surgery_type in (None, "", "unknown"):
+        return ""
+
+    weeks_since_event = conv.weeks_since_event
+
+    if weeks_since_event is None and (conv.surgery_date or "").strip():
+        try:
+            dt = datetime.strptime(conv.surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+        except Exception:
+            return ""
+
+    if weeks_since_event is None:
+        return ""
+
+    phase_id = phase_from_weeks(weeks_since_event, surgery_type)
+    if not phase_id:
+        return ""
+
+    protocol = get_protocol_for_surgery_type(surgery_type)
+    if not protocol:
+        return f"**Current phase:** {phase_id}\n\n"
+
+    for ph in protocol.phases:
+        if ph.phase_id == phase_id:
+            return f"**Current phase:** {phase_id} ({ph.name})\n\n"
+
+    return f"**Current phase:** {phase_id}\n\n"
 
 
 def run_pipeline(
@@ -64,21 +99,18 @@ def run_pipeline(
     conv = merge_turn(conv, nlu_turn, user_text, expected_slot=expected_slot)
 
     # --------------------------------------------
-    # CLARIFY MODE (deterministic hard gate)
+    # CLARIFY MODE
     # --------------------------------------------
-    # Important: do this BEFORE early-finalizing FORBID,
-    # so P1_1 fever can continue pain/swelling follow-up.
     missing_slots = compute_missing_slots(conv)
-
-    print("DEBUG AFTER MERGE / BEFORE CLARIFY:")
-    print("symptom_flags =", conv.symptom_flags)
-    print("pain_score =", conv.pain_score)
-    print("swelling_level =", conv.swelling_level)
-    print("pending_followup_slots =", conv.pending_followup_slots)
-    print("missing_slots =", missing_slots)
 
     if missing_slots:
         next_q = next_question_for_missing(conv, missing_slots)
+
+        phase_banner = ""
+        if next_q["slot_name"] == "symptom_screen":
+            phase_banner = _phase_banner_from_conv(conv)
+
+        question_text = f"{phase_banner}{next_q['question']}"
 
         audit_trace = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -90,7 +122,7 @@ def run_pipeline(
 
         result = {
             "mode": "clarify",
-            "question": next_q["question"],
+            "question": question_text,
             "slot_name": next_q["slot_name"],
             "conv_state": conv.to_dict(),
             "nlu_turn": nlu_turn.model_dump(),
@@ -101,7 +133,7 @@ def run_pipeline(
         return result
 
     # --------------------------------------------
-    # FINAL MODE (build full NLU from conv state)
+    # FINAL MODE
     # --------------------------------------------
     weeks_since_event = conv.weeks_since_event
 
@@ -129,14 +161,8 @@ def run_pipeline(
         }
     )
 
-    # --------------------------------------------
-    # State inference
-    # --------------------------------------------
     state = infer_state(nlu_full)
 
-    # --------------------------------------------
-    # Hard early escalation only
-    # --------------------------------------------
     from wellnessbot.rules.ruleset import rule_red_flags_escalate
 
     rr = rule_red_flags_escalate(nlu_full)
@@ -174,9 +200,6 @@ def run_pipeline(
 
         return result
 
-    # --------------------------------------------
-    # KG snapshot (audit)
-    # --------------------------------------------
     protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
     protocol_id = protocol.protocol_id if protocol else None
 
@@ -205,14 +228,8 @@ def run_pipeline(
         "pending_followup_slots": conv.pending_followup_slots,
     }
 
-    # --------------------------------------------
-    # Rule engine
-    # --------------------------------------------
     final_action, fired_rules = evaluate_rules(nlu_full)
 
-    # --------------------------------------------
-    # Planner
-    # --------------------------------------------
     planner_out = None
 
     if final_action == Action.RECOMMEND:
