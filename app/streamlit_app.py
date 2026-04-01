@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
+import sys
 import streamlit as st
+import streamlit.components.v1 as components
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
+    stream=sys.stderr,
+)
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
@@ -248,6 +257,7 @@ def _handle_pipeline_result(result: dict) -> None:
                     "exercise_id": ex_id,
                     "exercise_name": ex_name,
                     "phase_id": planner.get("phase_id"),
+                    "priority": planner.get("priority"),
                     "pain_score": st.session_state.conv_state.get("pain_score"),
                     "swelling_level": st.session_state.conv_state.get("swelling_level"),
                     "action": result.get("decision", {}).get("action"),

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 from wellnessbot.kg.loader import (
+    EvidenceChunk,
     Protocol,
     load_protocols,
     RedFlagPolicy,
@@ -30,6 +31,7 @@ class CompatibleExercise:
     swelling_allowed: List[str]
     weight_bearing_allowed: List[str]
     source_refs: List[str]
+    evidence_chunks: List[EvidenceChunk]
 
 
 def get_protocol_for_surgery_type(surgery_type: str) -> Optional[Protocol]:
@@ -189,10 +191,8 @@ def get_exercise(exercise_id: str, surgery_type: str) -> Optional[CompatibleExer
         weight_bearing_allowed = ["none", "partial", "full"]
 
     # Evidence refs: constraints + evidence chunks
-    chunk_refs = [
-        f"{ec.source_id}#{ec.chunk_id}"
-        for ec in getattr(ex, "evidence_chunks", []) or []
-    ]
+    raw_chunks: List[EvidenceChunk] = list(getattr(ex, "evidence_chunks", []) or [])
+    chunk_refs = [f"{ec.source_id}#{ec.chunk_id}" for ec in raw_chunks]
     source_refs = sorted(set(ev_pain_all + ev_sw_all + ev_wb_all + chunk_refs))
 
     return CompatibleExercise(
@@ -207,6 +207,7 @@ def get_exercise(exercise_id: str, surgery_type: str) -> Optional[CompatibleExer
         swelling_allowed=swelling_allowed,
         weight_bearing_allowed=weight_bearing_allowed,
         source_refs=source_refs,
+        evidence_chunks=raw_chunks,
     )
 
 
