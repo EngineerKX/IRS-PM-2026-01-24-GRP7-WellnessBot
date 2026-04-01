@@ -166,6 +166,24 @@ def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = Tru
     _bump_chat_input_epoch()
 
 
+def _get_latest_asked_slot() -> str | None:
+    if not st.session_state.chat:
+        return None
+
+    for msg in reversed(st.session_state.chat):
+        if msg.get("role") != "assistant":
+            continue
+
+        result = msg.get("result") or {}
+        if result.get("mode") == "clarify":
+            return result.get("slot_name")
+
+        if result.get("mode") == "final":
+            return None
+
+    return None
+
+
 def _build_assistant_text(result: dict) -> str:
     mode = result.get("mode", "final")
 
@@ -319,6 +337,9 @@ if "processing_turn" not in st.session_state:
 if "chat_input_epoch" not in st.session_state:
     st.session_state.chat_input_epoch = 0
 
+if "quick_reply" not in st.session_state:
+    st.session_state.quick_reply = None
+
 # Sync widget state BEFORE widgets are created
 if st.session_state.sync_core_profile_from_conv:
     _sync_core_profile_widgets_from_state()
@@ -397,6 +418,7 @@ with col_p2:
                 st.session_state.editable_surgery_date = ""
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
+                st.session_state.quick_reply = None
                 _bump_chat_input_epoch()
 
                 st.success(f"Deleted profile: {active_profile_id}")
@@ -697,6 +719,44 @@ else:
         st.session_state.processing_turn = False
         st.rerun()
 
+    # --- Quick reply buttons for clarify turns ---
+    asked_slot = _get_latest_asked_slot()
+
+    if (
+        asked_slot is not None
+        and not st.session_state.chat_ended
+        and not st.session_state.processing_turn
+    ):
+        if asked_slot == "pain_score":
+            st.markdown("**Select pain level:**")
+            c1, c2, c3 = st.columns(3)
+            if c1.button("Mild (1)", key="quick_pain_1", use_container_width=True):
+                st.session_state.quick_reply = "pain 1"
+                st.rerun()
+            if c2.button("Moderate (2)", key="quick_pain_2", use_container_width=True):
+                st.session_state.quick_reply = "pain 2"
+                st.rerun()
+            if c3.button("Severe (3)", key="quick_pain_3", use_container_width=True):
+                st.session_state.quick_reply = "pain 3"
+                st.rerun()
+
+        elif asked_slot == "swelling_level":
+            st.markdown("**Select swelling level:**")
+            c1, c2, c3 = st.columns(3)
+
+            if c1.button("Mild (1)", key="quick_swell_1", use_container_width=True):
+                st.session_state.quick_reply = "swelling 1"
+                st.rerun()
+
+            if c2.button("Moderate (2)", key="quick_swell_2", use_container_width=True):
+                st.session_state.quick_reply = "swelling 2"
+                st.rerun()
+
+            if c3.button("Severe (3)", key="quick_swell_3", use_container_width=True):
+                st.session_state.quick_reply = "swelling 3"
+                st.rerun()
+
+
     chat_placeholder = (
         "Type your message here"
         if not st.session_state.chat_ended
@@ -708,6 +768,10 @@ else:
         disabled=st.session_state.chat_ended or st.session_state.processing_turn,
         key=f"chat_input_{st.session_state.chat_input_epoch}",
     )
+
+    if st.session_state.quick_reply:
+        user_text = st.session_state.quick_reply
+        st.session_state.quick_reply = None
 
     if user_text:
         st.session_state.chat.append(

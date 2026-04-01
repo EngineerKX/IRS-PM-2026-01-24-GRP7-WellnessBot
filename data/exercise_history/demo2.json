@@ -25,5 +25,59 @@
     "pain_score": null,
     "swelling_level": "moderate",
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:12:52.037046+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "moderate",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:20:42.502438+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "unknown",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:21:10.679766+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "unknown",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:34:23.906578+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "mild",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:35:38.102579+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "moderate",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-03-30T09:37:16.809325+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": null,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
   }
 ]
