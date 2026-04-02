@@ -150,12 +150,15 @@ def run_pipeline(
         {
             "weeks_since_event": weeks_since_event,
             "surgery_type": conv.surgery_type,
+            "surgery_date": conv.surgery_date,
             "requested_exercise_text": conv.requested_exercise_text,
             "pain_score": conv.pain_score,
-            "swelling_level": conv.swelling_level,
+            "swelling_score": conv.swelling_score,
             "weight_bearing": conv.weight_bearing,
+            "symptom_screen_done": conv.symptom_screen_done,
+            "symptom_flags": conv.symptom_flags,
             "red_flag_terms": conv.red_flag_terms,
-            "negated_terms": nlu_turn.negated_terms,
+            "negated_terms": conv.negated_terms or nlu_turn.negated_terms,
             "missing_fields": [],
             "nlu_source": nlu_turn.nlu_source,
         }

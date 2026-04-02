@@ -55,17 +55,10 @@ def _match_redflag_policy(nlu: NLUOutput):
             if p.symptom == "pain" and str(nlu.pain_score) == str(p.severity):
                 matches.append(p)
 
-    swelling_map = {
-        "none": "0",
-        "mild": "1",
-        "moderate": "2",
-        "severe": "3",
-        "unknown": "unknown",
-    }
-    swell_value = swelling_map.get(nlu.swelling_level, "unknown")
-    for p in policies:
-        if p.symptom == "swelling" and str(swell_value) == str(p.severity):
-            matches.append(p)
+    if nlu.swelling_score is not None:
+        for p in policies:
+            if p.symptom == "swelling" and str(nlu.swelling_score) == str(p.severity):
+                matches.append(p)
 
     if "fever" in (nlu.red_flag_terms or []):
         for p in policies:
@@ -102,28 +95,20 @@ def _match_selfcare_actions(nlu: NLUOutput):
     actions = get_selfcare_actions(nlu.surgery_type, phase_id)
     matched = []
 
-    swelling_value = nlu.swelling_level
-
-    if swelling_value in (None, "", "unknown"):
+    if nlu.swelling_score is None:
         symptom_flags = set(x.strip().lower() for x in (nlu.symptom_flags or []))
         if getattr(nlu, "symptom_screen_done", False) and "swelling" not in symptom_flags:
-            swelling_value = "none"
+            swell_level = "0"
         else:
-            swelling_value = "unknown"
-
-    swelling_map = {
-        "none": "none",
-        "mild": "1",
-        "moderate": "2",
-        "severe": "3",
-        "unknown": "unknown",
-    }
-    swell_level = swelling_map.get(swelling_value, "unknown")
+            swell_level = "unknown"
+    else:
+        swell_level = str(nlu.swelling_score)
 
     for a in actions:
-        if str(a.swell_level).lower() == "any":
+        a_level = str(a.swell_level).lower()
+        if a_level == "any":
             matched.append(a)
-        elif str(a.swell_level).lower() == str(swell_level).lower():
+        elif a_level == swell_level.lower():
             matched.append(a)
 
     return matched
@@ -209,7 +194,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
 def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
     has_symptom_signal = (
         nlu.pain_score is not None
-        or (nlu.swelling_level or "unknown") != "unknown"
+        or nlu.swelling_score is not None
     )
 
     if not has_symptom_signal:
@@ -317,7 +302,7 @@ def rule_pain_gate(nlu: NLUOutput) -> Optional[RuleResult]:
         return RuleResult(
             action=Action.FORBID,
             rule_id="R_FORBID_PAIN_001",
-            rationale=f"Pain score {nlu.pain_score}/10 exceeds allowed threshold for '{ex.name}'.",
+            rationale=f"Pain score {nlu.pain_score}/3 exceeds allowed threshold for '{ex.name}'.",
             citations=ex.source_refs + ["SRC_RULEBOOK_001#pain_gate"],
             confidence_delta=-0.2,
         )
@@ -333,14 +318,23 @@ def rule_swelling_gate(nlu: NLUOutput) -> Optional[RuleResult]:
     if not ex:
         return None
 
-    if nlu.swelling_level != "unknown" and nlu.swelling_level not in ex.swelling_allowed:
-        return RuleResult(
-            action=Action.FORBID,
-            rule_id="R_FORBID_SWELLING_001",
-            rationale=f"Swelling level '{nlu.swelling_level}' not allowed for '{ex.name}'.",
-            citations=ex.source_refs + ["SRC_RULEBOOK_001#swelling_gate"],
-            confidence_delta=-0.2,
-        )
+    if nlu.swelling_score is not None:
+        score_to_label = {
+            0: "none",
+            1: "mild",
+            2: "moderate",
+            3: "severe",
+        }
+        swelling_label = score_to_label.get(nlu.swelling_score)
+
+        if swelling_label is not None and swelling_label not in ex.swelling_allowed:
+            return RuleResult(
+                action=Action.FORBID,
+                rule_id="R_FORBID_SWELLING_001",
+                rationale=f"Swelling level {nlu.swelling_score}/3 not allowed for '{ex.name}'.",
+                citations=ex.source_refs + ["SRC_RULEBOOK_001#swelling_gate"],
+                confidence_delta=-0.2,
+            )
     return None
 
 

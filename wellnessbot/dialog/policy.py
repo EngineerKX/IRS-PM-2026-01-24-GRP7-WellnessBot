@@ -77,27 +77,29 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
     red_flags = set(x.strip().lower() for x in (conv.red_flag_terms or []))
     phase_id = _current_phase_from_conv(conv)
 
+    # Handle pending follow-ups
     if conv.pending_followup_slots:
         remaining = []
 
         for slot in conv.pending_followup_slots:
             if slot == "pain_score" and conv.pain_score is None:
                 remaining.append(slot)
-            elif slot == "swelling_level" and (conv.swelling_level or "unknown") == "unknown":
+            elif slot == "swelling_score" and conv.swelling_score is None:
                 remaining.append(slot)
 
         conv.pending_followup_slots = remaining
         if remaining:
             return remaining
 
+    # Special case: P1_1 fever
     if phase_id == "P1_1" and "fever" in red_flags:
         missing = []
 
         if conv.pain_score is None:
             missing.append("pain_score")
 
-        if (conv.swelling_level or "unknown") == "unknown":
-            missing.append("swelling_level")
+        if conv.swelling_score is None:
+            missing.append("swelling_score")
 
         conv.exercise_blocked = True
         conv.block_reason = "P1_1_fever"
@@ -106,25 +108,27 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
         if missing:
             return missing
 
+    # NONE → still need severity collection
     if "none" in symptom_flags:
         missing = []
 
         if conv.pain_score is None:
             missing.append("pain_score")
 
-        if (conv.swelling_level or "unknown") == "unknown":
-            missing.append("swelling_level")
+        if conv.swelling_score is None:
+            missing.append("swelling_score")
 
         conv.pending_followup_slots = missing.copy()
 
         if missing:
             return missing
 
+    # Normal flow
     if "pain" in symptom_flags and conv.pain_score is None:
         return ["pain_score"]
 
-    if "swelling" in symptom_flags and (conv.swelling_level or "unknown") == "unknown":
-        return ["swelling_level"]
+    if "swelling" in symptom_flags and conv.swelling_score is None:
+        return ["swelling_score"]
 
     return []
 

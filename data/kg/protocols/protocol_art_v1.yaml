@@ -251,14 +251,14 @@ selfcare_actions:
 
   - selfcare_id: WARM_P3
     phase_id: P3
-    swell_level: none
+    swell_level: 0
     care_type: warm_hot_towel
     duration_minutes: 10
     frequency_condition: before_exercise
 
   - selfcare_id: WARM_P4
     phase_id: P4
-    swell_level: none
+    swell_level: 0
     care_type: warm_walk
     duration_minutes: 10
     frequency_condition: before_exercise

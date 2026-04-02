@@ -360,7 +360,7 @@ def _handle_pipeline_result(result: dict) -> None:
                     "exercise_name": ex_name,
                     "phase_id": planner.get("phase_id"),
                     "pain_score": st.session_state.conv_state.get("pain_score"),
-                    "swelling_level": st.session_state.conv_state.get("swelling_level"),
+                    "swelling_score": st.session_state.conv_state.get("swelling_score"),
                     "action": result.get("decision", {}).get("action"),
                 },
                 keep_last=50,
@@ -823,7 +823,7 @@ else:
             c0, c1, c2, c3 = st.columns(4)
 
             if c0.button("None", key="quick_pain_none", use_container_width=True):
-                st.session_state.quick_reply = "no pain"
+                st.session_state.quick_reply = "pain 0"
                 st.rerun()
 
             if c1.button("Mild (1)", key="quick_pain_1", use_container_width=True):
@@ -838,12 +838,12 @@ else:
                 st.session_state.quick_reply = "pain 3"
                 st.rerun()
 
-        elif asked_slot == "swelling_level":
+        elif asked_slot == "swelling_score":
             st.markdown("**Select swelling level:**")
             c0, c1, c2, c3 = st.columns(4)
 
             if c0.button("None", key="quick_swell_none", use_container_width=True):
-                st.session_state.quick_reply = "no swelling"
+                st.session_state.quick_reply = "swelling 0"
                 st.rerun()
 
             if c1.button("Mild (1)", key="quick_swell_1", use_container_width=True):

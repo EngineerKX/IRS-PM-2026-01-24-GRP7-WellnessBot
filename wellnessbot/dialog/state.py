@@ -11,7 +11,7 @@ class ConversationState:
     surgery_date: str = ""
     weeks_since_event: Optional[float] = None
     pain_score: Optional[int] = None
-    swelling_level: str = "unknown"
+    swelling_score: Optional[int] = None
     weight_bearing: str = "unknown"
     requested_exercise_text: str = ""
 
@@ -42,7 +42,7 @@ class ConversationState:
             "surgery_date": self.surgery_date,
             "weeks_since_event": self.weeks_since_event,
             "pain_score": self.pain_score,
-            "swelling_level": self.swelling_level,
+            "swelling_score": self.swelling_score,
             "weight_bearing": self.weight_bearing,
             "requested_exercise_text": self.requested_exercise_text,
             "symptom_screen_done": self.symptom_screen_done,
@@ -70,7 +70,7 @@ class ConversationState:
             surgery_date=d.get("surgery_date", "") or "",
             weeks_since_event=d.get("weeks_since_event"),
             pain_score=d.get("pain_score"),
-            swelling_level=d.get("swelling_level", "unknown"),
+            swelling_score=d.get("swelling_score"),
             weight_bearing=d.get("weight_bearing", "unknown"),
             requested_exercise_text=d.get("requested_exercise_text", "") or "",
             symptom_screen_done=bool(d.get("symptom_screen_done", False)),

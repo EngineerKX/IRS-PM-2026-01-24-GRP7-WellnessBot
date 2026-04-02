@@ -2,22 +2,6 @@
   "profile_id": "Demo_User",
   "display_name": "Demo_User",
   "surgery_type": "arthroscopic_knee_surgery",
-  "surgery_date": "2026-01-20",
-  "equipment_available": [
-    "chair",
-    "camping_mattress",
-    "foam_block",
-    "thick_carpet",
-    "wobble_board",
-    "stationary_bicycle",
-    "table",
-    "wall",
-    "stool",
-    "strap",
-    "sliding_board",
-    "socks",
-    "step",
-    "towel",
-    "resistance_band"
-  ]
+  "surgery_date": "2026-03-20",
+  "equipment_available": []
 }
