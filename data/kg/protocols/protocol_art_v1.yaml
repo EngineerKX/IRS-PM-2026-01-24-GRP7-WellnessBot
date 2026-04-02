@@ -1,10 +1,10 @@
 protocol_id: PROTO_KNEE_ARTHRO_V3
-surgery_type: post_arthroscopic_knee_surgery
+surgery_type: arthroscopic_knee_surgery
 version: "3.0"
 
 procedure:
   procedure_id: PROC_KNEE_ARTHRO
-  procedure_name: Post-arthroscopic knee surgery
+  procedure_name: Arthroscopic knee surgery
   body_region: knee
 
 phases:

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 SwellingLevel = Literal["none", "mild", "moderate", "severe", "unknown"]
 WeightBearing = Literal["none", "partial", "full", "unknown"]
 SurgeryType = Literal[
-    "post_arthroscopic_knee_surgery",
+    "arthroscopic_knee_surgery",
     "acl_reconstruction",
     "tkr",
     "sprain_non_surgical",

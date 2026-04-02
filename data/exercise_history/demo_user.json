@@ -1,0 +1,11 @@
+[
+  {
+    "timestamp_utc": "2026-04-02T02:39:31.005230+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  }
+]

@@ -221,8 +221,12 @@ User: "my knee hurts and is swollen"
 → symptom_flags = ["pain", "swelling"]
 
 expected_slot = surgery_type
+User: "arthroscopic knee surgery"
+→ surgery_type = "arthroscopic_knee_surgery"
+
+expected_slot = surgery_type
 User: "post arthroscopic knee surgery"
-→ surgery_type = "post_arthroscopic_knee_surgery"
+→ surgery_type = "arthroscopic_knee_surgery"
 
 expected_slot = surgery_type
 User: "acl reconstruction"
@@ -403,6 +407,10 @@ def normalize_requested_exercise_if_needed(nlu: NLUOutput) -> NLUOutput:
         nlu.requested_exercise_text = ""
     return nlu
 
+def normalize_surgery_type(nlu: NLUOutput) -> NLUOutput:
+    if nlu.surgery_type == "post_arthroscopic_knee_surgery":
+        nlu.surgery_type = "arthroscopic_knee_surgery"
+    return nlu
 
 def _build_response_schema() -> Dict[str, Any]:
     return {
@@ -413,7 +421,7 @@ def _build_response_schema() -> Dict[str, Any]:
             "surgery_type": {
                 "type": "string",
                 "enum": [
-                    "post_arthroscopic_knee_surgery",
+                    "arthroscopic_knee_surgery",
                     "acl_reconstruction",
                     "tkr",
                     "sprain_non_surgical",
@@ -514,6 +522,7 @@ def extract_openai(
     nlu = normalize_requested_exercise_if_needed(nlu)
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
     nlu = resolve_symptom_conflicts(nlu)
+    nlu = normalize_surgery_type(nlu)
     return nlu
 
 
@@ -533,6 +542,7 @@ def extract_with_fallback(
     nlu = normalize_requested_exercise_if_needed(nlu)
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
     nlu = resolve_symptom_conflicts(nlu)
+    nlu = normalize_surgery_type(nlu)
 
     print(
         "DEBUG POSTPROCESS:",

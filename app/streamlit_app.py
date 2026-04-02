@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import hashlib
+from datetime import datetime, timezone
+
 import streamlit as st
 
 from wellnessbot.pipeline.run import run_pipeline
@@ -18,8 +20,6 @@ from wellnessbot.storage.exercise_history_store import (
     append_exercise_history,
     clear_exercise_history,
 )
-
-from datetime import datetime, timezone
 from wellnessbot.kg.kg import phase_from_weeks, get_protocol_for_surgery_type
 
 TOOL_OPTIONS = [
@@ -42,7 +42,7 @@ TOOL_OPTIONS = [
 
 SURGERY_TYPE_OPTIONS = [
     "unknown",
-    "post_arthroscopic_knee_surgery",
+    "arthroscopic_knee_surgery",
     "acl_reconstruction",
     "tkr",
     "sprain_non_surgical",
@@ -50,14 +50,22 @@ SURGERY_TYPE_OPTIONS = [
 
 SURGERY_TYPE_LABELS = {
     "unknown": "Unknown",
-    "post_arthroscopic_knee_surgery": "Arthroscopic knee surgery",
+    "arthroscopic_knee_surgery": "Arthroscopic knee surgery",
     "acl_reconstruction": "ACL reconstruction",
     "tkr": "TKR",
     "sprain_non_surgical": "Sprain (non-surgical)",
 }
 
 
+def normalize_surgery_type_value(value: str | None) -> str:
+    value = (value or "unknown").strip()
+    if value == "post_arthroscopic_knee_surgery":
+        return "arthroscopic_knee_surgery"
+    return value or "unknown"
+
+
 def format_surgery_type(value: str) -> str:
+    value = normalize_surgery_type_value(value)
     return SURGERY_TYPE_LABELS.get(value, value.replace("_", " ").title())
 
 
@@ -85,7 +93,9 @@ def _result_should_end_chat(result: dict) -> bool:
 def build_welcome_message(profile: dict | None = None) -> dict:
     profile = profile or {}
 
-    surgery_type = profile.get("surgery_type", profile.get("event_type", "unknown"))
+    surgery_type = normalize_surgery_type_value(
+        profile.get("surgery_type", profile.get("event_type", "unknown"))
+    )
     surgery_date = profile.get("surgery_date", "")
 
     phase_id = None
@@ -159,8 +169,11 @@ def build_welcome_message(profile: dict | None = None) -> dict:
 
 
 def _profile_to_conv_state(profile: dict) -> dict:
+    surgery_type = normalize_surgery_type_value(
+        profile.get("surgery_type", profile.get("event_type", "unknown"))
+    )
     return {
-        "surgery_type": profile.get("surgery_type", profile.get("event_type", "unknown")),
+        "surgery_type": surgery_type,
         "surgery_date": profile.get("surgery_date", ""),
         "equipment_available": profile.get("equipment_available", []) or [],
     }
@@ -172,11 +185,14 @@ def _save_current_profile() -> None:
         return
 
     conv = st.session_state.conv_state or {}
+    surgery_type = normalize_surgery_type_value(
+        conv.get("surgery_type", conv.get("event_type", "unknown"))
+    )
 
     profile = {
         "profile_id": profile_id,
         "display_name": st.session_state.get("display_name", ""),
-        "surgery_type": conv.get("surgery_type", conv.get("event_type", "unknown")),
+        "surgery_type": surgery_type,
         "surgery_date": conv.get("surgery_date", ""),
         "equipment_available": conv.get("equipment_available", []) or [],
     }
@@ -186,7 +202,9 @@ def _save_current_profile() -> None:
 def _sync_core_profile_widgets_from_state() -> None:
     conv = st.session_state.conv_state or {}
 
-    surgery_type = conv.get("surgery_type", conv.get("event_type", "unknown"))
+    surgery_type = normalize_surgery_type_value(
+        conv.get("surgery_type", conv.get("event_type", "unknown"))
+    )
     if surgery_type not in SURGERY_TYPE_OPTIONS:
         surgery_type = "unknown"
 
@@ -205,6 +223,11 @@ def _bump_chat_input_epoch() -> None:
 
 
 def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = True) -> None:
+    preserved_profile = dict(preserved_profile or {})
+    preserved_profile["surgery_type"] = normalize_surgery_type_value(
+        preserved_profile.get("surgery_type", preserved_profile.get("event_type", "unknown"))
+    )
+
     st.session_state.chat = [build_welcome_message(preserved_profile)]
     st.session_state.feedback_state = {}
     st.session_state.conv_state = preserved_profile
@@ -304,7 +327,12 @@ def _build_assistant_text(result: dict) -> str:
 
 def _handle_pipeline_result(result: dict) -> None:
     if "conv_state" in result:
-        st.session_state.conv_state = result["conv_state"]
+        conv_state = dict(result["conv_state"] or {})
+        conv_state["surgery_type"] = normalize_surgery_type_value(
+            conv_state.get("surgery_type", conv_state.get("event_type", "unknown"))
+        )
+
+        st.session_state.conv_state = conv_state
         st.session_state.equipment_available = (
             st.session_state.conv_state.get("equipment_available", [])
             or st.session_state.equipment_available
@@ -541,7 +569,6 @@ else:
     st.sidebar.info("No profile loaded.")
 
 st.sidebar.divider()
-
 st.sidebar.header("Core Profile")
 
 edited_surgery_type = st.sidebar.selectbox(
@@ -559,7 +586,7 @@ edited_surgery_date = st.sidebar.text_input(
 )
 
 if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_loaded):
-    st.session_state.conv_state["surgery_type"] = edited_surgery_type
+    st.session_state.conv_state["surgery_type"] = normalize_surgery_type_value(edited_surgery_type)
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
 
@@ -602,9 +629,11 @@ with st.container():
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
-                "surgery_type": st.session_state.conv_state.get(
-                    "surgery_type",
-                    st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_type": normalize_surgery_type_value(
+                    st.session_state.conv_state.get(
+                        "surgery_type",
+                        st.session_state.conv_state.get("event_type", "unknown"),
+                    )
                 ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
@@ -619,9 +648,11 @@ with st.container():
     with col3:
         if st.button("Clear chat only", disabled=not st.session_state.profile_loaded):
             preserved_profile = {
-                "surgery_type": st.session_state.conv_state.get(
-                    "surgery_type",
-                    st.session_state.conv_state.get("event_type", "unknown"),
+                "surgery_type": normalize_surgery_type_value(
+                    st.session_state.conv_state.get(
+                        "surgery_type",
+                        st.session_state.conv_state.get("event_type", "unknown"),
+                    )
                 ),
                 "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
                 "equipment_available": st.session_state.equipment_available,
@@ -746,6 +777,9 @@ else:
         history_for_planner = load_exercise_history(profile_id)
 
         conv_state_for_run = dict(st.session_state.conv_state or {})
+        conv_state_for_run["surgery_type"] = normalize_surgery_type_value(
+            conv_state_for_run.get("surgery_type", conv_state_for_run.get("event_type", "unknown"))
+        )
         conv_state_for_run["exercise_history"] = history_for_planner
 
         result = run_pipeline(
