@@ -7,5 +7,131 @@
     "pain_score": 0,
     "swelling_level": "none",
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T02:40:44.524797+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T02:44:01.031034+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T02:51:58.307155+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T02:53:52.867395+00:00",
+    "exercise_id": "P1_2_E4",
+    "exercise_name": "Hip Abduction",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "moderate",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T03:06:57.792302+00:00",
+    "exercise_id": "P3_E1",
+    "exercise_name": "Quadriceps Stretch, Standing",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T03:07:24.032824+00:00",
+    "exercise_id": "P4_E3",
+    "exercise_name": "Lunges",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T04:54:36.752052+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": null,
+    "pain_score": 1,
+    "swelling_level": "mild",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T05:04:33.152230+00:00",
+    "exercise_id": "P1_1_E2",
+    "exercise_name": "Heel slides",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T05:07:34.761391+00:00",
+    "exercise_id": "P1_1_E4",
+    "exercise_name": "Quadriceps setting",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T07:25:34.738806+00:00",
+    "exercise_id": "P1_2_E2",
+    "exercise_name": "Knee flexion and extension",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "moderate",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T07:33:34.568143+00:00",
+    "exercise_id": "P2_E2",
+    "exercise_name": "Bridges",
+    "phase_id": null,
+    "pain_score": 1,
+    "swelling_level": "mild",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T07:34:25.353800+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T07:43:19.481546+00:00",
+    "exercise_id": "P3_E2",
+    "exercise_name": "Hamstring Stretch, Supine",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-02T07:43:56.144677+00:00",
+    "exercise_id": "P4_E1",
+    "exercise_name": "Step ups, forwards",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_level": "none",
+    "action": "RECOMMEND"
   }
 ]

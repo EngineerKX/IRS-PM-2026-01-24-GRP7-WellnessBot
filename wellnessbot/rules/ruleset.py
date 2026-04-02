@@ -29,11 +29,6 @@ def _current_phase(nlu: NLUOutput) -> Optional[str]:
 
 
 def _has_non_recommend_blockers(nlu: NLUOutput) -> bool:
-    """
-    Internal helper for recommend rules only.
-    Re-checks blocking conditions so recommend rules do not leak when
-    FORBID / ESCALATE / CLARIFY should dominate.
-    """
     blockers = [
         rule_red_flags_escalate(nlu),
         rule_missing_weeks(nlu),
@@ -55,13 +50,11 @@ def _match_redflag_policy(nlu: NLUOutput):
     policies = get_redflag_policies(nlu.surgery_type, phase_id)
     matches = []
 
-    # pain severity
     if nlu.pain_score is not None:
         for p in policies:
             if p.symptom == "pain" and str(nlu.pain_score) == str(p.severity):
                 matches.append(p)
 
-    # swelling severity
     swelling_map = {
         "none": "0",
         "mild": "1",
@@ -74,13 +67,11 @@ def _match_redflag_policy(nlu: NLUOutput):
         if p.symptom == "swelling" and str(swell_value) == str(p.severity):
             matches.append(p)
 
-    # fever
     if "fever" in (nlu.red_flag_terms or []):
         for p in policies:
             if p.symptom == "fever":
                 matches.append(p)
 
-    # excessive bleeding / wound drainage
     if any(
         t in (nlu.red_flag_terms or [])
         for t in ["excessive bleeding", "wound drainage", "pus", "bleeding"]
@@ -109,14 +100,12 @@ def _match_selfcare_actions(nlu: NLUOutput):
         return []
 
     actions = get_selfcare_actions(nlu.surgery_type, phase_id)
-
     matched = []
 
     swelling_value = nlu.swelling_level
 
     if swelling_value in (None, "", "unknown"):
         symptom_flags = set(x.strip().lower() for x in (nlu.symptom_flags or []))
-
         if getattr(nlu, "symptom_screen_done", False) and "swelling" not in symptom_flags:
             swelling_value = "none"
         else:
@@ -138,6 +127,28 @@ def _match_selfcare_actions(nlu: NLUOutput):
             matched.append(a)
 
     return matched
+
+
+def _format_supportive_steps(steps: list[str] | None) -> str:
+    if not steps:
+        return "supportive follow-up"
+
+    step_labels = {
+        "prescribed_medicine_reminder": "follow prescribed medicine guidance",
+        "pain_killer": "use pain relief as prescribed",
+        "exercise_downgrade": "downgrade exercise intensity",
+        "stop_exercise": "stop exercise for now",
+        "pain_check": "monitor pain",
+        "swell_check": "monitor swelling",
+    }
+
+    pretty = [step_labels.get(s, s.replace("_", " ")) for s in steps]
+    return ", ".join(pretty)
+
+
+def _supportive_sequence_is_blocking(policy) -> bool:
+    steps = set(policy.action_steps or [])
+    return "stop_exercise" in steps
 
 
 def rule_missing_weeks(nlu: NLUOutput) -> Optional[RuleResult]:
@@ -167,28 +178,35 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
         )
 
     if policy.action == "supportive_sequence":
-        steps = ", ".join(policy.action_steps or [])
+        steps_text = _format_supportive_steps(policy.action_steps or [])
+
+        if _supportive_sequence_is_blocking(policy):
+            return RuleResult(
+                action=Action.FORBID,
+                rule_id=f"R_FORBID_SUPPORTIVE_{policy.redflag_id}",
+                rationale=(
+                    "Do not proceed with exercise yet. "
+                    f"Supportive follow-up required first: {steps_text}."
+                ),
+                citations=["SRC_RULEBOOK_001#supportive_sequence"],
+                confidence_delta=-0.3,
+            )
 
         return RuleResult(
-            action=Action.FORBID,
-            rule_id=f"R_FORBID_SUPPORTIVE_{policy.redflag_id}",
+            action=Action.RECOMMEND,
+            rule_id=f"R_SUPPORTIVE_NONBLOCK_{policy.redflag_id}",
             rationale=(
-                "Do not proceed with exercise yet. "
-                f"Supportive follow-up required first: {steps}."
+                "Mild symptoms noted. Proceed conservatively with supportive follow-up: "
+                f"{steps_text}."
             ),
             citations=["SRC_RULEBOOK_001#supportive_sequence"],
-            confidence_delta=-0.3,
+            confidence_delta=+0.02,
         )
 
     return None
 
 
 def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
-    """
-    Non-blocking supportive guidance.
-    This may appear alongside FORBID, but should not appear with ESCALATE
-    because engine stops on ESCALATE.
-    """
     has_symptom_signal = (
         nlu.pain_score is not None
         or (nlu.swelling_level or "unknown") != "unknown"
@@ -215,12 +233,10 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
             texts.append(
                 f"warm up with a hot towel for {a.duration_minutes} minutes ({a.frequency_condition})"
             )
-
         elif care_type == "warm_walk":
             texts.append(
                 f"warm up by walking for {a.duration_minutes} minutes ({a.frequency_condition})"
             )
-
         elif care_type == "warm":
             texts.append(
                 f"warm up for {a.duration_minutes} minutes ({a.frequency_condition})"
@@ -352,7 +368,6 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
 
-    # Do not leak exercise recommendation when a blocker exists.
     if _has_non_recommend_blockers(nlu):
         return None
 

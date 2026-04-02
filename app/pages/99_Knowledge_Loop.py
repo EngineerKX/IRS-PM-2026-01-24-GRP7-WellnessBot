@@ -13,8 +13,8 @@ st.title("Knowledge Loop")
 st.caption("Offline mining for interaction logs + feedback logs")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INTERACTIONS = PROJECT_ROOT / "logs" / "interactions_2026-03-30.jsonl"
-DEFAULT_FEEDBACK = PROJECT_ROOT / "logs" / "feedback_2026-03-30.jsonl"
+DEFAULT_INTERACTIONS = PROJECT_ROOT / "logs"
+DEFAULT_FEEDBACK = PROJECT_ROOT / "logs"
 
 st.subheader("Input files")
 

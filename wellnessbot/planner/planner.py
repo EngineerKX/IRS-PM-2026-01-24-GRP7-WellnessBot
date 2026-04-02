@@ -60,7 +60,7 @@ def plan(
         "exercise_id": best.exercise_id,
         "exercise_name": best.name,
         "citations": best.source_refs,
-        "stop_conditions": ["pain increases", "swelling increases"],
+        "stop_conditions": ["pain increases"],
     }
 
 

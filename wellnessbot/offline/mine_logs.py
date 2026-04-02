@@ -38,6 +38,29 @@ def read_jsonl(path: Path) -> List[JsonDict]:
     return rows
 
 
+def read_jsonl_folder(folder: Path) -> List[JsonDict]:
+    if not folder.exists():
+        raise FileNotFoundError(f"Folder not found: {folder}")
+    if not folder.is_dir():
+        raise ValueError(f"Expected a folder path, got file: {folder}")
+
+    files = sorted(folder.glob("*.jsonl"))
+    if not files:
+        raise ValueError(f"No .jsonl files found in folder: {folder}")
+
+    rows: List[JsonDict] = []
+    for file in files:
+        rows.extend(read_jsonl(file))
+
+    return rows
+
+
+def read_jsonl_source(path_or_folder: Path) -> List[JsonDict]:
+    if path_or_folder.is_dir():
+        return read_jsonl_folder(path_or_folder)
+    return read_jsonl(path_or_folder)
+
+
 def index_by_interaction_id(rows: Iterable[JsonDict]) -> Dict[str, JsonDict]:
     out: Dict[str, JsonDict] = {}
     for row in rows:
@@ -380,8 +403,8 @@ def generate_candidate_cases(
 
 
 def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
-    interactions = read_jsonl(interactions_path)
-    feedback_rows = read_jsonl(feedback_path)
+    interactions = read_jsonl_source(interactions_path)
+    feedback_rows = read_jsonl_source(feedback_path)
 
     merged, unmatched_feedback = join_interactions_feedback(interactions, feedback_rows)
 
@@ -405,3 +428,20 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
         "red_flag_consistency": red_flag_consistency,
         "candidate_cases": [asdict(c) for c in candidate_cases],
     }
+
+
+if __name__ == "__main__":
+    # Example:
+    # interactions_source = Path("logs/interactions")
+    # feedback_source = Path("logs/feedback")
+    #
+    # Supports:
+    # - single file: Path("logs/interactions.jsonl")
+    # - folder:      Path("logs/interactions")
+
+    interactions_source = Path("logs/interactions")
+    feedback_source = Path("logs/feedback")
+
+    results = run_mining(interactions_source, feedback_source)
+
+    print(json.dumps(results, indent=2, ensure_ascii=False))
