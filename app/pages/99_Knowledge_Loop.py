@@ -8,6 +8,23 @@ import streamlit as st
 
 from wellnessbot.offline.mine_logs import run_mining
 
+# --------------------------------------------
+# PAGE TRACKING FOR CHAT RESET
+# --------------------------------------------
+CURRENT_PAGE = "mining"
+
+if "active_page" not in st.session_state:
+    st.session_state.active_page = None
+
+if "force_chat_reset" not in st.session_state:
+    st.session_state.force_chat_reset = False
+
+previous_page = st.session_state.active_page
+if previous_page is not None and previous_page != CURRENT_PAGE:
+    st.session_state.force_chat_reset = True
+
+st.session_state.active_page = CURRENT_PAGE
+
 st.set_page_config(page_title="Knowledge Loop", layout="wide")
 st.title("Knowledge Loop")
 st.caption("Offline mining for interaction logs + feedback logs")

@@ -61,6 +61,28 @@ def read_jsonl_source(path_or_folder: Path) -> List[JsonDict]:
     return read_jsonl(path_or_folder)
 
 
+def is_interaction_row(row: JsonDict) -> bool:
+    return bool(row.get("interaction_id")) and "decision" in row
+
+
+def is_feedback_row(row: JsonDict) -> bool:
+    return bool(row.get("interaction_id")) and "feedback" in row
+
+
+def read_interactions_source(path_or_folder: Path) -> List[JsonDict]:
+    rows = read_jsonl_source(path_or_folder)
+    out = [row for row in rows if is_interaction_row(row)]
+    if not out:
+        raise ValueError(f"No interaction rows found in source: {path_or_folder}")
+    return out
+
+
+def read_feedback_source(path_or_folder: Path) -> List[JsonDict]:
+    rows = read_jsonl_source(path_or_folder)
+    out = [row for row in rows if is_feedback_row(row)]
+    return out
+
+
 def index_by_interaction_id(rows: Iterable[JsonDict]) -> Dict[str, JsonDict]:
     out: Dict[str, JsonDict] = {}
     for row in rows:
@@ -141,7 +163,7 @@ def get_numeric_signature(row: JsonDict) -> Tuple[str, Optional[int], str, Optio
     return (
         get_user_text(row),
         nlu.get("pain_score"),
-        str(nlu.get("swelling_level") or "unknown"),
+        str(nlu.get("swelling_score") if nlu.get("swelling_score") is not None else "unknown"),
         get_action(row),
         get_winning_rule_id(row),
     )
@@ -266,7 +288,7 @@ def mine_numeric_ambiguity(merged: List[JsonDict]) -> List[JsonDict]:
                         {
                             "user_text": sig[0],
                             "pain_score": sig[1],
-                            "swelling_level": sig[2],
+                            "swelling_score": sig[2],
                             "action": sig[3],
                             "winning_rule_id": sig[4],
                             "count": count,
@@ -294,7 +316,7 @@ def mine_threshold_consistency(merged: List[JsonDict]) -> List[JsonDict]:
         key = (
             get_phase_id(row),
             nlu.get("pain_score"),
-            str(nlu.get("swelling_level") or "unknown"),
+            str(nlu.get("swelling_score") if nlu.get("swelling_score") is not None else "unknown"),
         )
         grouped[key][get_action(row) or "UNKNOWN"] += 1
 
@@ -304,12 +326,12 @@ def mine_threshold_consistency(merged: List[JsonDict]) -> List[JsonDict]:
             {
                 "phase_id": key[0],
                 "pain_score": key[1],
-                "swelling_level": key[2],
+                "swelling_score": key[2],
                 "action_distribution": dict(counter),
             }
         )
 
-    out.sort(key=lambda x: (str(x["phase_id"]), str(x["pain_score"]), x["swelling_level"]))
+    out.sort(key=lambda x: (str(x["phase_id"]), str(x["pain_score"]), x["swelling_score"]))
     return out
 
 
@@ -403,8 +425,8 @@ def generate_candidate_cases(
 
 
 def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
-    interactions = read_jsonl_source(interactions_path)
-    feedback_rows = read_jsonl_source(feedback_path)
+    interactions = read_interactions_source(interactions_path)
+    feedback_rows = read_feedback_source(feedback_path)
 
     merged, unmatched_feedback = join_interactions_feedback(interactions, feedback_rows)
 
@@ -431,14 +453,6 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Example:
-    # interactions_source = Path("logs/interactions")
-    # feedback_source = Path("logs/feedback")
-    #
-    # Supports:
-    # - single file: Path("logs/interactions.jsonl")
-    # - folder:      Path("logs/interactions")
-
     interactions_source = Path("logs/interactions")
     feedback_source = Path("logs/feedback")
 

@@ -22,6 +22,8 @@ from wellnessbot.storage.exercise_history_store import (
 )
 from wellnessbot.kg.kg import phase_from_weeks, get_protocol_for_surgery_type
 
+CURRENT_PAGE = "chat"
+
 TOOL_OPTIONS = [
     "chair",
     "resistance_band",
@@ -179,6 +181,32 @@ def _profile_to_conv_state(profile: dict) -> dict:
     }
 
 
+def _get_preserved_profile_from_state() -> dict:
+    profile_id = (st.session_state.get("profile_id") or "").strip()
+
+    if profile_id:
+        try:
+            profile = load_profile(profile_id)
+            return {
+                "surgery_type": normalize_surgery_type_value(
+                    profile.get("surgery_type", profile.get("event_type", "unknown"))
+                ),
+                "surgery_date": profile.get("surgery_date", ""),
+                "equipment_available": profile.get("equipment_available", []) or [],
+            }
+        except Exception:
+            pass
+
+    conv = st.session_state.get("conv_state") or {}
+    return {
+        "surgery_type": normalize_surgery_type_value(
+            conv.get("surgery_type", conv.get("event_type", "unknown"))
+        ),
+        "surgery_date": conv.get("surgery_date", ""),
+        "equipment_available": st.session_state.get("equipment_available", []) or [],
+    }
+
+
 def _save_current_profile() -> None:
     profile_id = (st.session_state.get("profile_id") or "").strip()
     if not profile_id:
@@ -224,18 +252,24 @@ def _bump_chat_input_epoch() -> None:
 
 def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = True) -> None:
     preserved_profile = dict(preserved_profile or {})
-    preserved_profile["surgery_type"] = normalize_surgery_type_value(
-        preserved_profile.get("surgery_type", preserved_profile.get("event_type", "unknown"))
-    )
 
-    st.session_state.chat = [build_welcome_message(preserved_profile)]
+    clean_profile = {
+        "surgery_type": normalize_surgery_type_value(
+            preserved_profile.get("surgery_type", preserved_profile.get("event_type", "unknown"))
+        ),
+        "surgery_date": preserved_profile.get("surgery_date", ""),
+        "equipment_available": preserved_profile.get("equipment_available", []) or [],
+    }
+
+    st.session_state.chat = [build_welcome_message(clean_profile)]
     st.session_state.feedback_state = {}
-    st.session_state.conv_state = preserved_profile
+    st.session_state.conv_state = clean_profile
     st.session_state.sync_core_profile_from_conv = True
     st.session_state.sync_equipment_from_conv = True
     st.session_state.chat_ended = False
     st.session_state.pending_user_text = None
     st.session_state.processing_turn = False
+    st.session_state.quick_reply = None
     st.session_state.profile_loaded = keep_profile_loaded
     _bump_chat_input_epoch()
 
@@ -432,6 +466,23 @@ if "chat_input_epoch" not in st.session_state:
 if "quick_reply" not in st.session_state:
     st.session_state.quick_reply = None
 
+if "active_page" not in st.session_state:
+    st.session_state.active_page = None
+
+if "force_chat_reset" not in st.session_state:
+    st.session_state.force_chat_reset = False
+
+came_from_other_page = st.session_state.active_page not in (None, CURRENT_PAGE)
+
+if st.session_state.get("profile_id") and (
+    came_from_other_page or st.session_state.force_chat_reset
+):
+    preserved_profile = _get_preserved_profile_from_state()
+    _reset_chat_session(preserved_profile, keep_profile_loaded=True)
+    st.session_state.force_chat_reset = False
+
+st.session_state.active_page = CURRENT_PAGE
+
 if st.session_state.sync_core_profile_from_conv:
     _sync_core_profile_widgets_from_state()
     st.session_state.sync_core_profile_from_conv = False
@@ -509,6 +560,8 @@ with col_p2:
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
                 st.session_state.quick_reply = None
+                st.session_state.force_chat_reset = False
+                st.session_state.active_page = CURRENT_PAGE
                 _bump_chat_input_epoch()
 
                 st.success(f"Deleted profile: {active_profile_id}")
@@ -590,11 +643,7 @@ if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
 
-    preserved_profile = {
-        "surgery_type": st.session_state.conv_state.get("surgery_type", "unknown"),
-        "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-        "equipment_available": st.session_state.equipment_available,
-    }
+    preserved_profile = _get_preserved_profile_from_state()
     _reset_chat_session(preserved_profile, keep_profile_loaded=True)
 
     st.success("Core profile updated.")
@@ -628,16 +677,7 @@ with st.container():
 
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
-            preserved_profile = {
-                "surgery_type": normalize_surgery_type_value(
-                    st.session_state.conv_state.get(
-                        "surgery_type",
-                        st.session_state.conv_state.get("event_type", "unknown"),
-                    )
-                ),
-                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-                "equipment_available": st.session_state.equipment_available,
-            }
+            preserved_profile = _get_preserved_profile_from_state()
             _reset_chat_session(
                 preserved_profile,
                 keep_profile_loaded=bool(st.session_state.get("profile_id")),
@@ -647,16 +687,7 @@ with st.container():
 
     with col3:
         if st.button("Clear chat only", disabled=not st.session_state.profile_loaded):
-            preserved_profile = {
-                "surgery_type": normalize_surgery_type_value(
-                    st.session_state.conv_state.get(
-                        "surgery_type",
-                        st.session_state.conv_state.get("event_type", "unknown"),
-                    )
-                ),
-                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-                "equipment_available": st.session_state.equipment_available,
-            }
+            preserved_profile = _get_preserved_profile_from_state()
             _reset_chat_session(
                 preserved_profile,
                 keep_profile_loaded=bool(st.session_state.get("profile_id")),
@@ -706,8 +737,10 @@ for i, msg in enumerate(st.session_state.chat):
             f"mode: **final** · action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`"
         )
 
-        audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
-        interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
+        interaction_id = result.get("interaction_id")
+        if not interaction_id:
+            audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
+            interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
 
         if i not in st.session_state.feedback_state:
             st.session_state.feedback_state[i] = {

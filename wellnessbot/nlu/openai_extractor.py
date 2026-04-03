@@ -537,15 +537,5 @@ def extract_with_fallback(
     nlu = resolve_symptom_conflicts(nlu)
     nlu = normalize_surgery_type(nlu)
 
-    print(
-        "DEBUG POSTPROCESS:",
-        {
-            "expected_slot": expected_slot,
-            "user_text": user_text,
-            "pain_score": nlu.pain_score,
-            "swelling_score": nlu.swelling_score,
-            "symptom_flags": nlu.symptom_flags,
-        },
-    )
 
     return nlu

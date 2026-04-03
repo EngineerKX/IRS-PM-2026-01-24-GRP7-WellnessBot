@@ -38,7 +38,9 @@ def plan(
     equipment_available = equipment_available or []
     exercise_history = exercise_history or []
 
+
     cands = list_exercises_for_phase(nlu.surgery_type, phase_id)
+    #print("DEBUG final candidate count:", len(cands))
 
     if not cands:
         return {"plan": None, "notes": ["No safe exercises found for this phase."]}

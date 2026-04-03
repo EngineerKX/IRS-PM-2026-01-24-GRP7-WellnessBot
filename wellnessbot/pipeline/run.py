@@ -201,6 +201,13 @@ def run_pipeline(
             "conv_state": conv.to_dict(),
         }
 
+        result["interaction_id"] = _make_interaction_id(
+            user_text,
+            audit_trace["timestamp_utc"],
+        )
+
+        log_interaction(result)
+
         return result
 
     protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
