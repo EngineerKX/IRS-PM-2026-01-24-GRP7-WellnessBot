@@ -4,6 +4,8 @@ import json
 import hashlib
 import logging
 import sys
+from datetime import datetime, timezone
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -27,6 +29,9 @@ from wellnessbot.storage.exercise_history_store import (
     append_exercise_history,
     clear_exercise_history,
 )
+from wellnessbot.kg.kg import phase_from_weeks, get_protocol_for_surgery_type
+
+CURRENT_PAGE = "chat"
 
 TOOL_OPTIONS = [
     "chair",
@@ -48,7 +53,7 @@ TOOL_OPTIONS = [
 
 SURGERY_TYPE_OPTIONS = [
     "unknown",
-    "post_arthroscopic_knee_surgery",
+    "arthroscopic_knee_surgery",
     "acl_reconstruction",
     "tkr",
     "sprain_non_surgical",
@@ -56,14 +61,22 @@ SURGERY_TYPE_OPTIONS = [
 
 SURGERY_TYPE_LABELS = {
     "unknown": "Unknown",
-    "post_arthroscopic_knee_surgery": "Post-arthroscopic knee surgery",
+    "arthroscopic_knee_surgery": "Arthroscopic knee surgery",
     "acl_reconstruction": "ACL reconstruction",
     "tkr": "TKR",
     "sprain_non_surgical": "Sprain (non-surgical)",
 }
 
 
+def normalize_surgery_type_value(value: str | None) -> str:
+    value = (value or "unknown").strip()
+    if value == "post_arthroscopic_knee_surgery":
+        return "arthroscopic_knee_surgery"
+    return value or "unknown"
+
+
 def format_surgery_type(value: str) -> str:
+    value = normalize_surgery_type_value(value)
     return SURGERY_TYPE_LABELS.get(value, value.replace("_", " ").title())
 
 
@@ -71,18 +84,64 @@ def make_interaction_id(user_text: str, audit_ts: str) -> str:
     return hashlib.sha256(f"{audit_ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
 
+def _result_should_end_chat(result: dict) -> bool:
+    if result.get("mode") != "final":
+        return False
+
+    action = (result.get("decision") or {}).get("action")
+    conv_state = result.get("conv_state") or {}
+    pending_followup_slots = conv_state.get("pending_followup_slots", []) or []
+
+    if action in {"RECOMMEND", "ESCALATE"}:
+        return True
+
+    if action == "FORBID":
+        return len(pending_followup_slots) == 0
+
+    return False
+
+
 def build_welcome_message(profile: dict | None = None) -> dict:
     profile = profile or {}
 
-    surgery_type = profile.get("surgery_type", profile.get("event_type", "unknown"))
+    surgery_type = normalize_surgery_type_value(
+        profile.get("surgery_type", profile.get("event_type", "unknown"))
+    )
     surgery_date = profile.get("surgery_date", "")
+
+    phase_id = None
+    phase_name = None
+    weeks_since_event = None
+
+    if surgery_type not in (None, "", "unknown") and surgery_date:
+        try:
+            dt = datetime.strptime(surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+                phase_id = phase_from_weeks(weeks_since_event, surgery_type)
+
+                protocol = get_protocol_for_surgery_type(surgery_type)
+                if protocol and phase_id:
+                    for ph in protocol.phases:
+                        if ph.phase_id == phase_id:
+                            phase_name = ph.name
+                            break
+        except Exception:
+            phase_id = None
+            phase_name = None
+            weeks_since_event = None
+
+    phase_line = ""
+    if phase_id:
+        if phase_name:
+            phase_line = f"**Current phase:** {phase_id} ({phase_name})\n\n"
+        else:
+            phase_line = f"**Current phase:** {phase_id}\n\n"
 
     if surgery_type in (None, "", "unknown"):
         slot_name = "surgery_type"
-        question = (
-            "What surgery type did you have? "
-            "(Post-arthroscopic knee surgery / ACL reconstruction / TKR / sprain non-surgical)"
-        )
+        question = "What surgery type did you have? (e.g. Arthroscopic knee surgery)"
     elif not surgery_date:
         slot_name = "surgery_date"
         question = (
@@ -92,8 +151,8 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     else:
         slot_name = "symptom_screen"
         question = (
-            "Are you having any symptoms today, such as fever, excessive bleeding, "
-            "unusual swelling, or pain? If none, just say 'none'."
+            "Are you having any symptoms today, such as fever or excessive bleeding? "
+            "If none, just say 'none'."
         )
 
     return {
@@ -101,6 +160,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
         "text": (
             "👋 Welcome to the Wellnessbot.\n\n"
             "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
+            f"{phase_line}"
             f"{question}"
         ),
         "result": {
@@ -110,6 +170,9 @@ def build_welcome_message(profile: dict | None = None) -> dict:
             "audit_trace": {
                 "mode": "clarify",
                 "asked_slot": slot_name,
+                "phase_id": phase_id,
+                "phase_name": phase_name,
+                "weeks_since_event": weeks_since_event,
                 "notes": ["Initial system greeting and first question."],
             },
         },
@@ -117,10 +180,39 @@ def build_welcome_message(profile: dict | None = None) -> dict:
 
 
 def _profile_to_conv_state(profile: dict) -> dict:
+    surgery_type = normalize_surgery_type_value(
+        profile.get("surgery_type", profile.get("event_type", "unknown"))
+    )
     return {
-        "surgery_type": profile.get("surgery_type", profile.get("event_type", "unknown")),
+        "surgery_type": surgery_type,
         "surgery_date": profile.get("surgery_date", ""),
         "equipment_available": profile.get("equipment_available", []) or [],
+    }
+
+
+def _get_preserved_profile_from_state() -> dict:
+    profile_id = (st.session_state.get("profile_id") or "").strip()
+
+    if profile_id:
+        try:
+            profile = load_profile(profile_id)
+            return {
+                "surgery_type": normalize_surgery_type_value(
+                    profile.get("surgery_type", profile.get("event_type", "unknown"))
+                ),
+                "surgery_date": profile.get("surgery_date", ""),
+                "equipment_available": profile.get("equipment_available", []) or [],
+            }
+        except Exception:
+            pass
+
+    conv = st.session_state.get("conv_state") or {}
+    return {
+        "surgery_type": normalize_surgery_type_value(
+            conv.get("surgery_type", conv.get("event_type", "unknown"))
+        ),
+        "surgery_date": conv.get("surgery_date", ""),
+        "equipment_available": st.session_state.get("equipment_available", []) or [],
     }
 
 
@@ -130,11 +222,14 @@ def _save_current_profile() -> None:
         return
 
     conv = st.session_state.conv_state or {}
+    surgery_type = normalize_surgery_type_value(
+        conv.get("surgery_type", conv.get("event_type", "unknown"))
+    )
 
     profile = {
         "profile_id": profile_id,
         "display_name": st.session_state.get("display_name", ""),
-        "surgery_type": conv.get("surgery_type", conv.get("event_type", "unknown")),
+        "surgery_type": surgery_type,
         "surgery_date": conv.get("surgery_date", ""),
         "equipment_available": conv.get("equipment_available", []) or [],
     }
@@ -144,7 +239,9 @@ def _save_current_profile() -> None:
 def _sync_core_profile_widgets_from_state() -> None:
     conv = st.session_state.conv_state or {}
 
-    surgery_type = conv.get("surgery_type", conv.get("event_type", "unknown"))
+    surgery_type = normalize_surgery_type_value(
+        conv.get("surgery_type", conv.get("event_type", "unknown"))
+    )
     if surgery_type not in SURGERY_TYPE_OPTIONS:
         surgery_type = "unknown"
 
@@ -163,16 +260,45 @@ def _bump_chat_input_epoch() -> None:
 
 
 def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = True) -> None:
-    st.session_state.chat = [build_welcome_message(preserved_profile)]
+    preserved_profile = dict(preserved_profile or {})
+
+    clean_profile = {
+        "surgery_type": normalize_surgery_type_value(
+            preserved_profile.get("surgery_type", preserved_profile.get("event_type", "unknown"))
+        ),
+        "surgery_date": preserved_profile.get("surgery_date", ""),
+        "equipment_available": preserved_profile.get("equipment_available", []) or [],
+    }
+
+    st.session_state.chat = [build_welcome_message(clean_profile)]
     st.session_state.feedback_state = {}
-    st.session_state.conv_state = preserved_profile
+    st.session_state.conv_state = clean_profile
     st.session_state.sync_core_profile_from_conv = True
     st.session_state.sync_equipment_from_conv = True
     st.session_state.chat_ended = False
     st.session_state.pending_user_text = None
     st.session_state.processing_turn = False
+    st.session_state.quick_reply = None
     st.session_state.profile_loaded = keep_profile_loaded
     _bump_chat_input_epoch()
+
+
+def _get_latest_asked_slot() -> str | None:
+    if not st.session_state.chat:
+        return None
+
+    for msg in reversed(st.session_state.chat):
+        if msg.get("role") != "assistant":
+            continue
+
+        result = msg.get("result") or {}
+        if result.get("mode") == "clarify":
+            return result.get("slot_name")
+
+        if result.get("mode") == "final":
+            return None
+
+    return None
 
 
 def _build_assistant_text(result: dict) -> str:
@@ -187,7 +313,25 @@ def _build_assistant_text(result: dict) -> str:
     top_rule = next((r for r in rules if r.get("action") == action), None)
     if top_rule is None and rules:
         top_rule = rules[0]
-    rationale = top_rule.get("rationale") if top_rule else "Decision generated."
+
+    primary_rationale = top_rule.get("rationale") if top_rule else "Decision generated."
+
+    extra_lines = []
+    for r in rules:
+        if r is top_rule:
+            continue
+
+        rid = r.get("rule_id", "")
+        rationale = (r.get("rationale") or "").strip()
+        if not rationale:
+            continue
+
+        if rid.startswith("R_SELFCARE_"):
+            extra_lines.append(f"**Supportive care:** {rationale}")
+
+    extra_block = ""
+    if extra_lines:
+        extra_block = "\n\n" + "\n\n".join(extra_lines)
 
     rule_ids = result["decision"].get("rule_ids", [])
     rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
@@ -212,10 +356,9 @@ def _build_assistant_text(result: dict) -> str:
             if stop:
                 planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
 
-    assistant_text = f"**{action}**\n\n{rationale}{planner_line}{rule_line}{cite_line}"
+    assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}{rule_line}{cite_line}"
 
-    terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
-    if action in terminal_actions:
+    if _result_should_end_chat(result):
         assistant_text += (
             "\n\n---\n\n"
             "✅ **Chat ended.**\n\n"
@@ -227,7 +370,12 @@ def _build_assistant_text(result: dict) -> str:
 
 def _handle_pipeline_result(result: dict) -> None:
     if "conv_state" in result:
-        st.session_state.conv_state = result["conv_state"]
+        conv_state = dict(result["conv_state"] or {})
+        conv_state["surgery_type"] = normalize_surgery_type_value(
+            conv_state.get("surgery_type", conv_state.get("event_type", "unknown"))
+        )
+
+        st.session_state.conv_state = conv_state
         st.session_state.equipment_available = (
             st.session_state.conv_state.get("equipment_available", [])
             or st.session_state.equipment_available
@@ -239,10 +387,7 @@ def _handle_pipeline_result(result: dict) -> None:
     mode = result.get("mode", "final")
 
     if mode == "final":
-        terminal_actions = {"RECOMMEND", "ESCALATE", "FORBID"}
-        action = result.get("decision", {}).get("action")
-        if action in terminal_actions:
-            st.session_state.chat_ended = True
+        st.session_state.chat_ended = _result_should_end_chat(result)
 
         planner = (result.get("audit_trace") or {}).get("planner") or {}
         ex_id = planner.get("exercise_id")
@@ -259,7 +404,7 @@ def _handle_pipeline_result(result: dict) -> None:
                     "phase_id": planner.get("phase_id"),
                     "priority": planner.get("priority"),
                     "pain_score": st.session_state.conv_state.get("pain_score"),
-                    "swelling_level": st.session_state.conv_state.get("swelling_level"),
+                    "swelling_score": st.session_state.conv_state.get("swelling_score"),
                     "action": result.get("decision", {}).get("action"),
                 },
                 keep_last=50,
@@ -270,7 +415,6 @@ st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="ce
 st.title("Wellnessbot - Rehab Decision Support")
 st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
 
-# --- Session state bootstrap ---
 if "conv_state" not in st.session_state:
     st.session_state.conv_state = {}
 
@@ -329,7 +473,26 @@ if "processing_turn" not in st.session_state:
 if "chat_input_epoch" not in st.session_state:
     st.session_state.chat_input_epoch = 0
 
-# Sync widget state BEFORE widgets are created
+if "quick_reply" not in st.session_state:
+    st.session_state.quick_reply = None
+
+if "active_page" not in st.session_state:
+    st.session_state.active_page = None
+
+if "force_chat_reset" not in st.session_state:
+    st.session_state.force_chat_reset = False
+
+came_from_other_page = st.session_state.active_page not in (None, CURRENT_PAGE)
+
+if st.session_state.get("profile_id") and (
+    came_from_other_page or st.session_state.force_chat_reset
+):
+    preserved_profile = _get_preserved_profile_from_state()
+    _reset_chat_session(preserved_profile, keep_profile_loaded=True)
+    st.session_state.force_chat_reset = False
+
+st.session_state.active_page = CURRENT_PAGE
+
 if st.session_state.sync_core_profile_from_conv:
     _sync_core_profile_widgets_from_state()
     st.session_state.sync_core_profile_from_conv = False
@@ -338,7 +501,6 @@ if st.session_state.sync_equipment_from_conv:
     _sync_equipment_multiselect_from_state()
     st.session_state.sync_equipment_from_conv = False
 
-# --- Sidebar: Profile Memory ---
 st.sidebar.header("Profile Memory")
 
 existing_profiles = list_profiles()
@@ -407,6 +569,9 @@ with col_p2:
                 st.session_state.editable_surgery_date = ""
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
+                st.session_state.quick_reply = None
+                st.session_state.force_chat_reset = False
+                st.session_state.active_page = CURRENT_PAGE
                 _bump_chat_input_epoch()
 
                 st.success(f"Deleted profile: {active_profile_id}")
@@ -467,8 +632,6 @@ else:
     st.sidebar.info("No profile loaded.")
 
 st.sidebar.divider()
-
-# --- Sidebar: Core Profile ---
 st.sidebar.header("Core Profile")
 
 edited_surgery_type = st.sidebar.selectbox(
@@ -486,15 +649,11 @@ edited_surgery_date = st.sidebar.text_input(
 )
 
 if st.sidebar.button("Save core profile", disabled=not st.session_state.profile_loaded):
-    st.session_state.conv_state["surgery_type"] = edited_surgery_type
+    st.session_state.conv_state["surgery_type"] = normalize_surgery_type_value(edited_surgery_type)
     st.session_state.conv_state["surgery_date"] = edited_surgery_date.strip()
     _save_current_profile()
 
-    preserved_profile = {
-        "surgery_type": st.session_state.conv_state.get("surgery_type", "unknown"),
-        "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-        "equipment_available": st.session_state.equipment_available,
-    }
+    preserved_profile = _get_preserved_profile_from_state()
     _reset_chat_session(preserved_profile, keep_profile_loaded=True)
 
     st.success("Core profile updated.")
@@ -515,7 +674,6 @@ if st.session_state.profile_loaded:
     st.session_state.conv_state["equipment_available"] = selected_tools
     _save_current_profile()
 
-# --- Controls (top bar) ---
 with st.container():
     col1, col2, col3 = st.columns([1, 1, 1])
 
@@ -529,14 +687,7 @@ with st.container():
 
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
-            preserved_profile = {
-                "surgery_type": st.session_state.conv_state.get(
-                    "surgery_type",
-                    st.session_state.conv_state.get("event_type", "unknown"),
-                ),
-                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-                "equipment_available": st.session_state.equipment_available,
-            }
+            preserved_profile = _get_preserved_profile_from_state()
             _reset_chat_session(
                 preserved_profile,
                 keep_profile_loaded=bool(st.session_state.get("profile_id")),
@@ -546,14 +697,7 @@ with st.container():
 
     with col3:
         if st.button("Clear chat only", disabled=not st.session_state.profile_loaded):
-            preserved_profile = {
-                "surgery_type": st.session_state.conv_state.get(
-                    "surgery_type",
-                    st.session_state.conv_state.get("event_type", "unknown"),
-                ),
-                "surgery_date": st.session_state.conv_state.get("surgery_date", ""),
-                "equipment_available": st.session_state.equipment_available,
-            }
+            preserved_profile = _get_preserved_profile_from_state()
             _reset_chat_session(
                 preserved_profile,
                 keep_profile_loaded=bool(st.session_state.get("profile_id")),
@@ -563,7 +707,6 @@ with st.container():
 
 st.divider()
 
-# --- Render chat history ---
 for i, msg in enumerate(st.session_state.chat):
     if msg["role"] == "user":
         with st.chat_message("user"):
@@ -604,8 +747,10 @@ for i, msg in enumerate(st.session_state.chat):
             f"mode: **final** · action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`"
         )
 
-        audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
-        interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
+        interaction_id = result.get("interaction_id")
+        if not interaction_id:
+            audit_ts = (result.get("audit_trace") or {}).get("timestamp_utc") or ""
+            interaction_id = make_interaction_id(result.get("user_text", ""), audit_ts)
 
         if i not in st.session_state.feedback_state:
             st.session_state.feedback_state[i] = {
@@ -665,7 +810,6 @@ for i, msg in enumerate(st.session_state.chat):
 
 st.divider()
 
-# --- Input box / staged processing ---
 if not st.session_state.profile_loaded:
     st.info("Please load a profile or create a new profile before starting the chat.")
 else:
@@ -676,6 +820,9 @@ else:
         history_for_planner = load_exercise_history(profile_id)
 
         conv_state_for_run = dict(st.session_state.conv_state or {})
+        conv_state_for_run["surgery_type"] = normalize_surgery_type_value(
+            conv_state_for_run.get("surgery_type", conv_state_for_run.get("event_type", "unknown"))
+        )
         conv_state_for_run["exercise_history"] = history_for_planner
 
         result = run_pipeline(
@@ -707,6 +854,53 @@ else:
         st.session_state.processing_turn = False
         st.rerun()
 
+    asked_slot = _get_latest_asked_slot()
+
+    if (
+        asked_slot is not None
+        and not st.session_state.chat_ended
+        and not st.session_state.processing_turn
+    ):
+        if asked_slot == "pain_score":
+            st.markdown("**Select pain level:**")
+            c0, c1, c2, c3 = st.columns(4)
+
+            if c0.button("None", key="quick_pain_none", use_container_width=True):
+                st.session_state.quick_reply = "pain 0"
+                st.rerun()
+
+            if c1.button("Mild (1)", key="quick_pain_1", use_container_width=True):
+                st.session_state.quick_reply = "pain 1"
+                st.rerun()
+
+            if c2.button("Moderate (2)", key="quick_pain_2", use_container_width=True):
+                st.session_state.quick_reply = "pain 2"
+                st.rerun()
+
+            if c3.button("Severe (3)", key="quick_pain_3", use_container_width=True):
+                st.session_state.quick_reply = "pain 3"
+                st.rerun()
+
+        elif asked_slot == "swelling_score":
+            st.markdown("**Select swelling level:**")
+            c0, c1, c2, c3 = st.columns(4)
+
+            if c0.button("None", key="quick_swell_none", use_container_width=True):
+                st.session_state.quick_reply = "swelling 0"
+                st.rerun()
+
+            if c1.button("Mild (1)", key="quick_swell_1", use_container_width=True):
+                st.session_state.quick_reply = "swelling 1"
+                st.rerun()
+
+            if c2.button("Moderate (2)", key="quick_swell_2", use_container_width=True):
+                st.session_state.quick_reply = "swelling 2"
+                st.rerun()
+
+            if c3.button("Severe (3)", key="quick_swell_3", use_container_width=True):
+                st.session_state.quick_reply = "swelling 3"
+                st.rerun()
+
     chat_placeholder = (
         "Type your message here"
         if not st.session_state.chat_ended
@@ -718,6 +912,10 @@ else:
         disabled=st.session_state.chat_ended or st.session_state.processing_turn,
         key=f"chat_input_{st.session_state.chat_input_epoch}",
     )
+
+    if st.session_state.quick_reply:
+        user_text = st.session_state.quick_reply
+        st.session_state.quick_reply = None
 
     if user_text:
         st.session_state.chat.append(

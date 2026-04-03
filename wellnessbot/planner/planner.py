@@ -347,6 +347,23 @@ def plan(
         len(exercise_history),
     )
 
+    cands = list_exercises_for_phase(nlu.surgery_type, phase_id)
+    #print("DEBUG final candidate count:", len(cands))
+
+    if not cands:
+        return {"plan": None, "notes": ["No safe exercises found for this phase."]}
+
+    # Prefer exercises compatible with available equipment
+    compatible = [ex for ex in cands if _equipment_compatible(ex, equipment_available)]
+    if compatible:
+        cands = compatible
+
+    ranked = sorted(
+        cands,
+        key=lambda ex: _score_exercise(ex, equipment_available, exercise_history),
+        reverse=True,
+    )
+
     candidates = list_exercises_for_phase(nlu.surgery_type, phase_id)
     logger.debug(
         "KG candidates | count=%d ids=%s",
@@ -393,7 +410,7 @@ def plan(
         ],
         # For display: flat citation strings
         "citations": best.source_refs,
-        "stop_conditions": ["pain increases", "swelling increases"],
+        "stop_conditions": ["pain increases"],
     }
 
 

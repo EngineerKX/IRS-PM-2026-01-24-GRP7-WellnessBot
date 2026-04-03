@@ -25,8 +25,8 @@ def merge_turn(
     if nlu_turn.pain_score is not None:
         conv.pain_score = int(nlu_turn.pain_score)
 
-    if (nlu_turn.swelling_level or "unknown") != "unknown":
-        conv.swelling_level = nlu_turn.swelling_level
+    if nlu_turn.swelling_score is not None:
+        conv.swelling_score = int(nlu_turn.swelling_score)
 
     if (nlu_turn.weight_bearing or "unknown") != "unknown":
         conv.weight_bearing = nlu_turn.weight_bearing
@@ -36,7 +36,7 @@ def merge_turn(
 
     if getattr(nlu_turn, "red_flag_terms", None):
         existing = set(conv.red_flag_terms or [])
-        existing.update(nlu_turn.red_flag_terms)
+        existing.update(x.strip().lower() for x in nlu_turn.red_flag_terms if str(x).strip())
         conv.red_flag_terms = sorted(existing)
 
     if getattr(nlu_turn, "symptom_flags", None):
@@ -51,9 +51,13 @@ def merge_turn(
             else:
                 conv.symptom_flags = sorted(existing_flags)
         else:
-            # Positive symptom evidence overrides/removes "none"
             merged_flags = (existing_flags | new_flags) - {"none"}
             conv.symptom_flags = sorted(merged_flags)
+
+    if getattr(nlu_turn, "negated_terms", None):
+        existing_neg = set(x.strip().lower() for x in (conv.negated_terms or []))
+        new_neg = set(x.strip().lower() for x in (nlu_turn.negated_terms or []))
+        conv.negated_terms = sorted(existing_neg | new_neg)
 
     conv.history.append(
         {

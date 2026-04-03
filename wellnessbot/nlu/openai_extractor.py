@@ -53,27 +53,50 @@ expected_slot = pain_score
 User: "3"
 → pain_score = 3
 
-expected_slot = swelling_level
-User: "1"
-→ swelling_level = "mild"
+expected_slot = pain_score
+User: "0"
+→ pain_score = 0
 
-expected_slot = swelling_level
-User: "2"
-→ swelling_level = "moderate"
+expected_slot = pain_score
+User: "no pain"
+→ pain_score = 0
 
-expected_slot = swelling_level
-User: "3"
-→ swelling_level = "severe"
-
-expected_slot = swelling_level
+expected_slot = pain_score
 User: "none"
-→ swelling_level = "none"
+→ pain_score = 0
+
+expected_slot = swelling_score
+User: "1"
+→ swelling_score = 1
+
+expected_slot = swelling_score
+User: "2"
+→ swelling_score = 2
+
+expected_slot = swelling_score
+User: "3"
+→ swelling_score = 3
+
+expected_slot = swelling_score
+User: "none"
+→ swelling_score = 0
+
+expected_slot = swelling_score
+User: "no swelling"
+→ swelling_score = 0
+
+expected_slot = swelling_score
+User: "0"
+→ swelling_score = 0
 
 expected_slot = symptom_screen
 User: "none"
 → symptom_screen_done = true
 → symptom_flags = ["none"]
 → red_flag_terms = []
+→ negated_terms = []
+→ pain_score = null
+→ swelling_score = null
 → requested_exercise_text = ""
 
 expected_slot = symptom_screen
@@ -198,8 +221,12 @@ User: "my knee hurts and is swollen"
 → symptom_flags = ["pain", "swelling"]
 
 expected_slot = surgery_type
+User: "arthroscopic knee surgery"
+→ surgery_type = "arthroscopic_knee_surgery"
+
+expected_slot = surgery_type
 User: "post arthroscopic knee surgery"
-→ surgery_type = "post_arthroscopic_knee_surgery"
+→ surgery_type = "arthroscopic_knee_surgery"
 
 expected_slot = surgery_type
 User: "acl reconstruction"
@@ -215,11 +242,11 @@ User: "sprain"
 
 Field definitions:
 - weeks_since_event: float weeks (convert days to weeks if explicitly given).
-- surgery_type: one of ["post_arthroscopic_knee_surgery","acl_reconstruction","tkr","sprain_non_surgical","unknown"].
+- surgery_type: one of ["arthroscopic_knee_surgery","acl_reconstruction","tkr","sprain_non_surgical","unknown"].
 - requested_exercise_text: normalized short phrase ONLY if the user explicitly mentions an exercise they want to do. Otherwise return an empty string "".
 - Never use "unknown" for requested_exercise_text. Use "" instead.
-- pain_score: integer 0–10 if present.
-- swelling_level: one of ["none","mild","moderate","severe","unknown"].
+- pain_score: integer 0–3 if present.
+- swelling_score: integer 0–3 if present.
 - weight_bearing: one of ["none","partial","full","unknown"].
 - symptom_screen_done: optional extraction hint only. The downstream policy layer decides conversation progress.
 - symptom_flags: list from ["pain","swelling","fever","excessive_bleeding","none"] based only on the current message.
@@ -231,13 +258,10 @@ Field definitions:
 Important:
 - A date-only answer like "2026-02-01" is NOT a symptom answer.
 - "none" in symptom screening means no symptoms and should set symptom_screen_done=true and symptom_flags=["none"].
+- When expected_slot = symptom_screen, do NOT fill pain_score or swelling_score unless the user explicitly gives those values.
 - Normalize synonyms:
   - "swell", "swollen", "puffy" -> "swelling"
   - "bleed", "bleeding" -> "excessive bleeding"
-- Do not infer swelling severity from words like "swelling", "swollen", "swell", or "puffy".
-Only set swelling_level when the user explicitly gives severity, such as:
-- mild / moderate / severe
-- 1 / 2 / 3 when expected_slot = swelling_level
 """
 
 
@@ -294,7 +318,6 @@ def resolve_symptom_conflicts(nlu: NLUOutput) -> NLUOutput:
             if x.strip().lower() not in {"excessive bleeding", "bleeding"}
         }
 
-    # if there are positive symptom flags, remove "none"
     if len(flags - {"none"}) > 0 and "none" in flags:
         flags.discard("none")
 
@@ -310,25 +333,27 @@ def normalize_expected_slot_numeric(
 ) -> NLUOutput:
     text = (user_text or "").strip().lower()
 
-    # -------- PAIN SCORE --------
     if expected_slot == "pain_score":
+        if text in {"no pain", "none", "0"}:
+            nlu.pain_score = 0
+            return nlu
+
         if text.isdigit():
             value = int(text)
-
-            # enforce valid range (your system uses 1–3)
             if value in {0, 1, 2, 3}:
                 nlu.pain_score = value
 
         return nlu
 
-    # -------- SWELLING LEVEL --------
-    if expected_slot == "swelling_level":
-        if text == "1":
-            nlu.swelling_level = "mild"
-        elif text == "2":
-            nlu.swelling_level = "moderate"
-        elif text == "3":
-            nlu.swelling_level = "severe"
+    if expected_slot == "swelling_score":
+        if text in {"none", "no swelling", "0"}:
+            nlu.swelling_score = 0
+            return nlu
+
+        if text.isdigit():
+            value = int(text)
+            if value in {0, 1, 2, 3}:
+                nlu.swelling_score = value
 
         return nlu
 
@@ -341,21 +366,31 @@ def normalize_symptom_screen_if_needed(
     nlu: NLUOutput,
 ) -> NLUOutput:
     """
-    Minimal deterministic normalization for explicit symptom-screen replies.
-    Does NOT decide conversation progress.
+    Deterministic normalization for explicit symptom-screen replies.
+    Critically, symptom-screen answers must not leak into pain/swelling slots.
     """
     if expected_slot != "symptom_screen":
         return nlu
 
     text = (user_text or "").strip().lower()
 
-    # Only patch absolute explicit answer if model failed to extract anything useful.
+    # Hard reset slot-specific fields for symptom-screen turn.
+    # Symptom screen should identify symptoms, not fill severity slots.
+    nlu.pain_score = None
+    nlu.swelling_score = None
+
     has_any_signal = bool(nlu.symptom_flags or nlu.red_flag_terms or nlu.negated_terms)
     if has_any_signal:
+        if text in {"none", "no", "no symptoms"}:
+            nlu.symptom_flags = ["none"]
+            nlu.red_flag_terms = []
+            nlu.negated_terms = []
         return nlu
 
     if text in {"none", "no", "no symptoms"}:
         nlu.symptom_flags = ["none"]
+        nlu.red_flag_terms = []
+        nlu.negated_terms = []
 
     return nlu
 
@@ -364,6 +399,12 @@ def normalize_requested_exercise_if_needed(nlu: NLUOutput) -> NLUOutput:
     text = (nlu.requested_exercise_text or "").strip().lower()
     if text in {"unknown", "none", "n/a", "na", "nil"}:
         nlu.requested_exercise_text = ""
+    return nlu
+
+
+def normalize_surgery_type(nlu: NLUOutput) -> NLUOutput:
+    if nlu.surgery_type == "post_arthroscopic_knee_surgery":
+        nlu.surgery_type = "arthroscopic_knee_surgery"
     return nlu
 
 
@@ -376,7 +417,7 @@ def _build_response_schema() -> Dict[str, Any]:
             "surgery_type": {
                 "type": "string",
                 "enum": [
-                    "post_arthroscopic_knee_surgery",
+                    "arthroscopic_knee_surgery",
                     "acl_reconstruction",
                     "tkr",
                     "sprain_non_surgical",
@@ -385,11 +426,8 @@ def _build_response_schema() -> Dict[str, Any]:
             },
             "surgery_date": {"type": "string"},
             "requested_exercise_text": {"type": "string"},
-            "pain_score": {"type": ["integer", "null"], "minimum": 0, "maximum": 10},
-            "swelling_level": {
-                "type": "string",
-                "enum": ["none", "mild", "moderate", "severe", "unknown"],
-            },
+            "pain_score": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
+            "swelling_score": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
             "weight_bearing": {
                 "type": "string",
                 "enum": ["none", "partial", "full", "unknown"],
@@ -413,7 +451,7 @@ def _build_response_schema() -> Dict[str, Any]:
             "surgery_date",
             "requested_exercise_text",
             "pain_score",
-            "swelling_level",
+            "swelling_score",
             "weight_bearing",
             "symptom_screen_done",
             "symptom_flags",
@@ -475,10 +513,9 @@ def extract_openai(
     nlu = convert_date_to_weeks_if_needed(user_text, nlu)
     nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
     nlu = normalize_requested_exercise_if_needed(nlu)
-    print("DEBUG RAW NLU FROM OPENAI:", nlu.model_dump())
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
-    print("DEBUG NLU AFTER NUMERIC NORMALIZATION:", nlu.model_dump())
     nlu = resolve_symptom_conflicts(nlu)
+    nlu = normalize_surgery_type(nlu)
     return nlu
 
 
@@ -493,19 +530,12 @@ def extract_with_fallback(
         timeout_s=timeout_s,
     )
 
-    # Always run deterministic post-processing
     nlu = convert_date_to_weeks_if_needed(user_text, nlu)
     nlu = normalize_symptom_screen_if_needed(user_text, expected_slot, nlu)
     nlu = normalize_requested_exercise_if_needed(nlu)
     nlu = normalize_expected_slot_numeric(user_text, expected_slot, nlu)
-    print(
-        "DEBUG POSTPROCESS:",
-        {
-            "expected_slot": expected_slot,
-            "user_text": user_text,
-            "pain_score": nlu.pain_score,
-        },
-    )
     nlu = resolve_symptom_conflicts(nlu)
+    nlu = normalize_surgery_type(nlu)
+
 
     return nlu

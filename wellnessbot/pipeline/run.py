@@ -9,6 +9,7 @@ from wellnessbot.kg.kg import (
     get_exercise,
     get_protocol_for_surgery_type,
     resolve_exercise_id,
+    phase_from_weeks,
 )
 from wellnessbot.nlu.mock_extractor import extract_mock
 from wellnessbot.nlu.openai_extractor import extract_with_fallback
@@ -28,6 +29,40 @@ def _make_interaction_id(user_text: str, ts: str) -> str:
     return hashlib.sha256(f"{ts}|{user_text}".encode("utf-8")).hexdigest()[:16]
 
 
+def _phase_banner_from_conv(conv: ConversationState) -> str:
+    surgery_type = conv.surgery_type
+    if surgery_type in (None, "", "unknown"):
+        return ""
+
+    weeks_since_event = conv.weeks_since_event
+
+    if weeks_since_event is None and (conv.surgery_date or "").strip():
+        try:
+            dt = datetime.strptime(conv.surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+        except Exception:
+            return ""
+
+    if weeks_since_event is None:
+        return ""
+
+    phase_id = phase_from_weeks(weeks_since_event, surgery_type)
+    if not phase_id:
+        return ""
+
+    protocol = get_protocol_for_surgery_type(surgery_type)
+    if not protocol:
+        return f"**Current phase:** {phase_id}\n\n"
+
+    for ph in protocol.phases:
+        if ph.phase_id == phase_id:
+            return f"**Current phase:** {phase_id} ({ph.name})\n\n"
+
+    return f"**Current phase:** {phase_id}\n\n"
+
+
 def run_pipeline(
     user_text: str,
     *,
@@ -42,22 +77,12 @@ def run_pipeline(
     4) Else -> run deterministic decision engine
     """
 
-    # --------------------------------------------
-    # Conversation memory (load existing state first)
-    # --------------------------------------------
     conv = ConversationState.from_dict(conv_state or {})
-
-    # Planner history is now injected externally from file-based storage.
     planner_history = (conv_state or {}).get("exercise_history", []) or []
 
-    # Figure out what slot the system was expecting BEFORE this turn
-    # Peek only; do not mutate asked_slots here.
     prior_missing_slots = compute_missing_slots(conv)
     expected_slot = prior_missing_slots[0] if prior_missing_slots else None
 
-    # --------------------------------------------
-    # Decide NLU mode
-    # --------------------------------------------
     mock_env = os.getenv("MOCK_NLU", "0").strip() == "1"
     use_mock = force_mock_nlu or mock_env
     conv.last_expected_slot = expected_slot or ""
@@ -71,29 +96,90 @@ def run_pipeline(
             timeout_s=12.0,
         )
 
-    # --------------------------------------------
-    # Merge current turn into conversation state
-    # --------------------------------------------
     conv = merge_turn(conv, nlu_turn, user_text, expected_slot=expected_slot)
 
     # --------------------------------------------
-    # EARLY RED FLAG CHECK (before clarify)
+    # CLARIFY MODE
     # --------------------------------------------
+    missing_slots = compute_missing_slots(conv)
+
+    if missing_slots:
+        next_q = next_question_for_missing(conv, missing_slots)
+
+        phase_banner = ""
+        if next_q["slot_name"] == "symptom_screen":
+            phase_banner = _phase_banner_from_conv(conv)
+
+        question_text = f"{phase_banner}{next_q['question']}"
+
+        audit_trace = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "mode": "clarify",
+            "missing_slots": missing_slots,
+            "asked_slot": next_q["slot_name"],
+            "notes": ["Clarify is system-driven (not LLM)."],
+        }
+
+        result = {
+            "mode": "clarify",
+            "question": question_text,
+            "slot_name": next_q["slot_name"],
+            "conv_state": conv.to_dict(),
+            "nlu_turn": nlu_turn.model_dump(),
+            "audit_trace": audit_trace,
+            "user_text": user_text,
+        }
+
+        return result
+
+    # --------------------------------------------
+    # FINAL MODE
+    # --------------------------------------------
+    weeks_since_event = conv.weeks_since_event
+
+    if weeks_since_event is None and (conv.surgery_date or "").strip():
+        try:
+            dt = datetime.strptime(conv.surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days >= 0:
+                weeks_since_event = round(delta_days / 7, 2)
+        except Exception:
+            pass
+
+    nlu_full = NLUOutput.model_validate(
+        {
+            "weeks_since_event": weeks_since_event,
+            "surgery_type": conv.surgery_type,
+            "surgery_date": conv.surgery_date,
+            "requested_exercise_text": conv.requested_exercise_text,
+            "pain_score": conv.pain_score,
+            "swelling_score": conv.swelling_score,
+            "weight_bearing": conv.weight_bearing,
+            "symptom_screen_done": conv.symptom_screen_done,
+            "symptom_flags": conv.symptom_flags,
+            "red_flag_terms": conv.red_flag_terms,
+            "negated_terms": conv.negated_terms or nlu_turn.negated_terms,
+            "missing_fields": [],
+            "nlu_source": nlu_turn.nlu_source,
+        }
+    )
+
+    state = infer_state(nlu_full)
+
     from wellnessbot.rules.ruleset import rule_red_flags_escalate
 
-    rr = rule_red_flags_escalate(nlu_turn)
-
-    if rr is not None:
+    rr = rule_red_flags_escalate(nlu_full)
+    if rr is not None and rr.action == Action.ESCALATE:
         audit_trace = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "mode": "final",
-            "notes": ["Early escalation due to red flag before clarification."],
+            "notes": ["Early escalation due to red flag before planning."],
         }
 
         result = {
             "mode": "final",
             "user_text": user_text,
-            "nlu": nlu_turn.model_dump(),
+            "nlu": nlu_full.model_dump(),
             "decision": {
                 "action": rr.action.value,
                 "confidence": 0.9,
@@ -115,73 +201,15 @@ def run_pipeline(
             "conv_state": conv.to_dict(),
         }
 
-        return result
+        result["interaction_id"] = _make_interaction_id(
+            user_text,
+            audit_trace["timestamp_utc"],
+        )
 
-    # --------------------------------------------
-    # CLARIFY MODE (deterministic hard gate)
-    # --------------------------------------------
-    missing_slots = compute_missing_slots(conv)
-
-    if missing_slots:
-        next_q = next_question_for_missing(conv, missing_slots)
-
-        audit_trace = {
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "mode": "clarify",
-            "missing_slots": missing_slots,
-            "asked_slot": next_q["slot_name"],
-            "notes": ["Clarify is system-driven (not LLM)."],
-        }
-
-        result = {
-            "mode": "clarify",
-            "question": next_q["question"],
-            "slot_name": next_q["slot_name"],
-            "conv_state": conv.to_dict(),
-            "nlu_turn": nlu_turn.model_dump(),
-            "audit_trace": audit_trace,
-            "user_text": user_text,
-        }
+        log_interaction(result)
 
         return result
 
-    # --------------------------------------------
-    # FINAL MODE (build full NLU from conv state)
-    # --------------------------------------------
-    weeks_since_event = conv.weeks_since_event
-
-    if weeks_since_event is None and (conv.surgery_date or "").strip():
-        try:
-            dt = datetime.strptime(conv.surgery_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            delta_days = (datetime.now(timezone.utc) - dt).days
-            if delta_days >= 0:
-                weeks_since_event = round(delta_days / 7, 2)
-        except Exception:
-            pass
-
-    nlu_full = NLUOutput.model_validate(
-        {
-            "weeks_since_event": weeks_since_event,
-            "surgery_type": conv.surgery_type,
-            "requested_exercise_text": conv.requested_exercise_text,
-            "pain_score": conv.pain_score,
-            "swelling_level": conv.swelling_level,
-            "weight_bearing": conv.weight_bearing,
-            "red_flag_terms": conv.red_flag_terms,
-            "negated_terms": nlu_turn.negated_terms,
-            "missing_fields": [],
-            "nlu_source": nlu_turn.nlu_source,
-        }
-    )
-
-    # --------------------------------------------
-    # State inference
-    # --------------------------------------------
-    state = infer_state(nlu_full)
-
-    # --------------------------------------------
-    # KG snapshot (audit)
-    # --------------------------------------------
     protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
     protocol_id = protocol.protocol_id if protocol else None
 
@@ -205,16 +233,13 @@ def run_pipeline(
         "exercise_allowed_phases": ex.allowed_phases if ex else None,
         "equipment_available": conv.equipment_available,
         "exercise_history_size": len(planner_history),
+        "exercise_blocked": conv.exercise_blocked,
+        "block_reason": conv.block_reason,
+        "pending_followup_slots": conv.pending_followup_slots,
     }
 
-    # --------------------------------------------
-    # Rule engine
-    # --------------------------------------------
     final_action, fired_rules = evaluate_rules(nlu_full)
 
-    # --------------------------------------------
-    # Planner
-    # --------------------------------------------
     planner_out = None
 
     if final_action == Action.RECOMMEND:
@@ -239,9 +264,6 @@ def run_pipeline(
     elif final_action in (Action.FORBID, Action.ESCALATE):
         planner_out = None
 
-    # --------------------------------------------
-    # Confidence (prototype)
-    # --------------------------------------------
     conf = 0.5
     for r in fired_rules:
         conf += r.confidence_delta
