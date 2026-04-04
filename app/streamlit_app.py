@@ -770,7 +770,8 @@ for i, msg in enumerate(st.session_state.chat):
         if fb["thumb"] == "down" and not fb["submitted"]:
             fb["expected_action"] = st.selectbox(
                 "What would be the correct action?",
-                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                #options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                options=["UNKNOWN", "RECOMMEND", "FORBID", "ESCALATE"],
                 index=0,
                 key=f"expected_action_{i}",
             )
@@ -785,9 +786,10 @@ for i, msg in enumerate(st.session_state.chat):
                     interaction_id=interaction_id,
                     thumb="down",
                     comment=fb["comment"] or None,
-                    expected_action=None
-                    if fb["expected_action"] == "UNKNOWN"
-                    else fb["expected_action"],
+                    #expected_action=None
+                    #if fb["expected_action"] == "UNKNOWN"
+                    #else fb["expected_action"],
+                    expected_action=fb["expected_action"]
                 )
                 st.toast("Feedback saved (👎)")
                 st.rerun()
