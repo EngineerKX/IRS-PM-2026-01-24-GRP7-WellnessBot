@@ -34,16 +34,20 @@ def plan(
     phase_id: str,
     equipment_available: List[str] | None = None,
     exercise_history: List[dict] | None = None,
+    selfcare_routine: List[str] | None = None,
 ) -> Dict:
     equipment_available = equipment_available or []
     exercise_history = exercise_history or []
-
+    selfcare_routine = selfcare_routine or []
 
     cands = list_exercises_for_phase(nlu.surgery_type, phase_id)
-    #print("DEBUG final candidate count:", len(cands))
 
     if not cands:
-        return {"plan": None, "notes": ["No safe exercises found for this phase."]}
+        return {
+            "plan": None,
+            "notes": ["No safe exercises found for this phase."],
+            "selfcare_routine": selfcare_routine,
+        }
 
     # Prefer exercises compatible with available equipment
     compatible = [ex for ex in cands if _equipment_compatible(ex, equipment_available)]
@@ -63,6 +67,7 @@ def plan(
         "exercise_name": best.name,
         "citations": best.source_refs,
         "stop_conditions": ["pain increases"],
+        "selfcare_routine": selfcare_routine,
     }
 
 
