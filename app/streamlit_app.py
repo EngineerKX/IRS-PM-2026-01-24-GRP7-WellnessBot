@@ -2,9 +2,18 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
+import sys
 from datetime import datetime, timezone
 
 import streamlit as st
+import streamlit.components.v1 as components
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
+    stream=sys.stderr,
+)
 
 from wellnessbot.pipeline.run import run_pipeline
 from wellnessbot.logging.logger import log_feedback
@@ -393,6 +402,7 @@ def _handle_pipeline_result(result: dict) -> None:
                     "exercise_id": ex_id,
                     "exercise_name": ex_name,
                     "phase_id": planner.get("phase_id"),
+                    "priority": planner.get("priority"),
                     "pain_score": st.session_state.conv_state.get("pain_score"),
                     "swelling_score": st.session_state.conv_state.get("swelling_score"),
                     "action": result.get("decision", {}).get("action"),
@@ -770,7 +780,8 @@ for i, msg in enumerate(st.session_state.chat):
         if fb["thumb"] == "down" and not fb["submitted"]:
             fb["expected_action"] = st.selectbox(
                 "What would be the correct action?",
-                options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                #options=["UNKNOWN", "RECOMMEND", "FORBID", "CLARIFY", "ESCALATE"],
+                options=["UNKNOWN", "RECOMMEND", "FORBID", "ESCALATE"],
                 index=0,
                 key=f"expected_action_{i}",
             )
@@ -785,9 +796,10 @@ for i, msg in enumerate(st.session_state.chat):
                     interaction_id=interaction_id,
                     thumb="down",
                     comment=fb["comment"] or None,
-                    expected_action=None
-                    if fb["expected_action"] == "UNKNOWN"
-                    else fb["expected_action"],
+                    #expected_action=None
+                    #if fb["expected_action"] == "UNKNOWN"
+                    #else fb["expected_action"],
+                    expected_action=fb["expected_action"]
                 )
                 st.toast("Feedback saved (👎)")
                 st.rerun()
