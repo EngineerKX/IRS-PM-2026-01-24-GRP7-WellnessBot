@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from wellnessbot.kg.kg import (
     get_exercise,
@@ -61,6 +61,27 @@ def _phase_banner_from_conv(conv: ConversationState) -> str:
             return f"**Current phase:** {phase_id} ({ph.name})\n\n"
 
     return f"**Current phase:** {phase_id}\n\n"
+
+
+def _extract_selfcare_routine(fired_rules: List[Any]) -> List[str]:
+    out: List[str] = []
+
+    for r in fired_rules:
+        rule_id = getattr(r, "rule_id", "") or ""
+        rationale = (getattr(r, "rationale", "") or "").strip()
+
+        if rule_id.startswith("R_SELFCARE_") and rationale:
+            out.append(rationale)
+
+    # deduplicate while preserving order
+    deduped: List[str] = []
+    seen = set()
+    for item in out:
+        if item not in seen:
+            deduped.append(item)
+            seen.add(item)
+
+    return deduped
 
 
 def run_pipeline(
@@ -239,6 +260,7 @@ def run_pipeline(
     }
 
     final_action, fired_rules = evaluate_rules(nlu_full)
+    selfcare_routine = _extract_selfcare_routine(fired_rules)
 
     planner_out = None
 
@@ -249,9 +271,14 @@ def run_pipeline(
                 state.phase_id,
                 equipment_available=conv.equipment_available,
                 exercise_history=planner_history,
+                selfcare_routine=selfcare_routine,
             )
         else:
-            planner_out = {"plan": None, "notes": ["No phase available for planning."]}
+            planner_out = {
+                "plan": None,
+                "notes": ["No phase available for planning."],
+                "selfcare_routine": selfcare_routine,
+            }
 
     elif final_action == Action.CLARIFY:
         if state.phase_id:
