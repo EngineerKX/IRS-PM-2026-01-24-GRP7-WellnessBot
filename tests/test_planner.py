@@ -142,6 +142,38 @@ class TestNormalProgression:
         # Should still be in priority-1 (E2 next)
         assert result.get("priority") == 1
 
+    def test_advances_to_next_priority_when_remaining_tier_exercises_lack_equipment(self):
+        """
+        When all compatible exercises in a priority tier are done but some exercises
+        in that tier are unavailable due to missing equipment, the planner should
+        advance to the next priority and recommend the first compatible exercise there.
+
+        Setup (user has chair + table, no towel):
+          P3 priority-1 exercises:
+            E1 (no equipment) → done
+            E2 (towel)        → EXCLUDED (no towel)
+            E4 (chair, table) → done
+
+          All compatible priority-1 exercises done → advance to priority-2.
+          P3 priority-2 exercises:
+            E3 (chair)          → SELECTED (user has chair)
+            E5 (resistance_band)→ excluded
+            E6 (resistance_band)→ excluded
+
+        Expected: P3_E3 (priority 2), even though P3_E2 (priority 1) was never done.
+        """
+        history = [
+            _hist("P3", "P3_E1", priority=1),
+            _hist("P3", "P3_E4", priority=1),
+        ]
+        result = plan(
+            _nlu(), "P3",
+            equipment_available=["chair", "table"],
+            exercise_history=history,
+        )
+        _assert_recommended(result, "P3_E3")
+        assert result.get("priority") == 2
+
     def test_history_from_other_phases_ignored(self):
         """History entries for a different phase should not affect current phase progression."""
         history = [
