@@ -1,0 +1,1537 @@
+{
+  "protocol_id": "post_arthroscopic_knee_surgery_rehab",
+  "protocol_name": "Post-Arthroscopic Knee Surgery Rehabilitation Protocol",
+  "version": "1.0",
+  "domain": "rehabilitation",
+  "body_part": "knee",
+  "condition": "post-arthroscopic knee surgery",
+  "phases": [
+    {
+      "phase_id": "P1-1",
+      "phase_name": "Initial",
+      "start_week": 0,
+      "end_week": 1,
+      "phase_goals": [
+        "Protect repair",
+        "Reduce swelling, minimize pain",
+        "Restore patellar mobility",
+        "Restore full extension",
+        "Flexion < 90 degrees",
+        "Minimize arthrogenic muscle inhibition, re-establish quad control, regain full active extension"
+      ],
+      "swelling_management": [
+        {
+          "chunk_id": "P1-1_SWELL_1",
+          "chunk_type": "swelling_management",
+          "text": "A Cold Therapy Unit or an ice pack should be applied immediately after surgery and used for at least 20 minutes every other hour while you are awake. Your operative leg should be elevated with the knee straight when applying cold therapy and/or when resting.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1-1_SWELL_2",
+          "chunk_type": "swelling_management",
+          "text": "Apply cold to reduce pain and swelling. Use ice on the knee 20 minutes on and 20 minutes off for the first day when awake. Then apply cold as often as needed for 15 to 20 minutes at a time for the next several days. Place a towel or cloth between the skin and the ice to prevent skin injury.",
+          "source_ids": [
+            "S3"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf"
+          ]
+        }
+      ],
+      "warmup": [],
+      "summary": "Initial phase covering weeks 0 to 1. Goals: Protect repair; Reduce swelling, minimize pain; Restore patellar mobility; Restore full extension; ...",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "initial"
+      ]
+    },
+    {
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "phase_goals": [],
+      "swelling_management": [
+        {
+          "chunk_id": "P1-2_SWELL_1",
+          "chunk_type": "swelling_management",
+          "text": "For the first few days, apply ice for 15 minutes every hour on the painful area of your knee\no After first few days, the frequency of icing can be reduced to every 2-3 hours or so",
+          "source_ids": [
+            "S5"
+          ],
+          "source_urls": [
+            "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1-2_SWELL_2",
+          "chunk_type": "swelling_management",
+          "text": "Continue to ice the knee three or four times a day to reduce pain and swelling. Place a towel or\ncloth between the skin and the ice to prevent skin injury",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        }
+      ],
+      "warmup": [],
+      "summary": "Early phase covering weeks 2 to 3.",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "early"
+      ]
+    },
+    {
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "phase_goals": [
+        "Continue to protect repair",
+        "Reduce pain, minimize swelling",
+        "Maintain full extension",
+        "Flexion < 90 degrees unless further direction from MD"
+      ],
+      "swelling_management": [
+        {
+          "chunk_id": "P2_SWELL_1",
+          "chunk_type": "swelling_management",
+          "text": "Manage your swelling by continuing to use cold therapy and elevation, especially after exercise.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P2_SWELL_2",
+          "chunk_type": "swelling_management",
+          "text": "It important to take 5-10 minutes to cool-down after exercising. This should include\nstretches and applying ice to sore muscles.",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "warmup": [],
+      "summary": "Intermediate phase covering weeks 4 to 5. Goals: Continue to protect repair; Reduce pain, minimize swelling; Maintain full extension; Flexion < 90 degrees unless further direction from MD",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "intermediate"
+      ]
+    },
+    {
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "phase_goals": [
+        "Continue to protect repair",
+        "Maintain full extension",
+        "Normalize gait.",
+        "Flexion within 10 degrees of contra lateral side.",
+        "Safely progress strengthening.",
+        "Promote proper movement patterns.",
+        "Avoid post exercise pain/swelling"
+      ],
+      "swelling_management": [
+        {
+          "chunk_id": "P3_SWELL_1",
+          "chunk_type": "swelling_management",
+          "text": "Manage your swelling by continuing to use cold therapy and elevation, especially after exercise.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P3_SWELL_2",
+          "chunk_type": "swelling_management",
+          "text": "It important to take 5-10 minutes to cool-down after exercising. This should include\nstretches and applying ice to sore muscles.",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "warmup": [
+        {
+          "chunk_id": "P3_WARMUP_1",
+          "chunk_type": "warmup",
+          "text": "A heating pad or warm towel can be used to help relax the\nmuscles in preparation for stretching.",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "summary": "Late phase covering weeks 6 to 9. Goals: Continue to protect repair; Maintain full extension; Normalize gait.; Flexion within 10 degrees of contra lateral side.; ...",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "late"
+      ]
+    },
+    {
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "phase_goals": [
+        "Maintain full ROM.",
+        "Safely progress strengthening.",
+        "Promote proper movement patterns.",
+        "Avoid post exercise pain/swelling."
+      ],
+      "swelling_management": [
+        {
+          "chunk_id": "P4_SWELL_1",
+          "chunk_type": "swelling_management",
+          "text": "Manage your swelling by continuing to use cold therapy and elevation, especially after exercise.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P4_SWELL_2",
+          "chunk_type": "swelling_management",
+          "text": "It important to take 5-10 minutes to cool-down after exercising. This should include\nstretches and applying ice to sore muscles.",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "warmup": [
+        {
+          "chunk_id": "P4_WARMUP_1",
+          "chunk_type": "warmup",
+          "text": "Warm-up by walking 5-10 minutes to get your muscles ready for exercising",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "summary": "Transitional phase covering weeks 10 to 12. Goals: Maintain full ROM.; Safely progress strengthening.; Promote proper movement patterns.; Avoid post exercise pain/swelling.",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "transitional"
+      ]
+    },
+    {
+      "phase_id": "P5",
+      "phase_name": "Return to sport",
+      "start_week": 13,
+      "end_week": 20,
+      "phase_goals": [
+        "Safely progress strengthening.",
+        "Safely initiate sport specific training program.",
+        "Promote proper movement patterns.",
+        "Avoid post exercise pain/swelling."
+      ],
+      "swelling_management": [],
+      "warmup": [],
+      "summary": "Return to sport phase covering weeks 13 to 20. Goals: Safely progress strengthening.; Safely initiate sport specific training program.; Promote proper movement patterns.; Avoid post exercise pain/swelling.",
+      "tags": [
+        "rehabilitation",
+        "knee",
+        "return_to_sport"
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "exercise_id": "P1_1_E1",
+      "phase_id": "P1-1",
+      "phase_name": "Initial",
+      "start_week": 0,
+      "end_week": 1,
+      "canonical_name": "Ankle pumps",
+      "alternate_names": [],
+      "position": "Lying",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_1_E1_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "The foot and ankle should be actively “pumped” up and down 10-20 times every hour to promote circulation and decrease swelling.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_1_E1_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Move the foot up and down to stimulate circulation in the leg.\nDo at least 10 ankle pump exercises each hour.",
+          "source_ids": [
+            "S5"
+          ],
+          "source_urls": [
+            "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Ankle pumps is an exercise in the Initial phase for weeks 0 to 1. Position: Lying. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_2_E1",
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "canonical_name": "Terminal Knee Extension, Supine",
+      "alternate_names": [
+        "Short Arc Lift"
+      ],
+      "position": "Lying",
+      "tool": "Towel",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_2_E1_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Lie on your back with a towel roll under your knee.\nStraighten your knee (still supported by the roll) and hold for 5 seconds. Keep your toes pointing up.\nSlowly return to the starting position. Repeat 10 times.",
+          "source_ids": [
+            "S7"
+          ],
+          "source_urls": [
+            "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_2_E1_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "With the knee bent over a rolled up towel or blanket, lift the foot so that the knee fully straightens.\nHold the knee locked in extension for five seconds, then slowly lower. Repeat 20 times.",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Terminal Knee Extension, Supine is an exercise in the Early phase for weeks 2 to 3. Position: Lying. Tool: Towel.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "towel"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P2_E1",
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "canonical_name": "Calf raises",
+      "alternate_names": [
+        "Standing toe raise"
+      ],
+      "position": "Standing",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P2_E1_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Both legs: Start with feet shoulder width apart and toes pointed straight ahead, and raise up onto your toes. Start with\none set of 10 reps, holding each raise for 5 secs. Increase the number of reps up to 30 with 5 sec hold. Start by using support at a wall or table and progress to no support as able.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P2_E1_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Stand facing a table , hands on the table for support and balance.\nKeep the knees extended fully. Tighten the quadriceps to hold the\nknee fully straight. Raise up on 'tip-toes' while maintaining the\nknees in full extension. Hold for one second, then lower slowly\nto the starting position. Repeat 20 times.",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Calf raises is an exercise in the Intermediate phase for weeks 4 to 5. Position: Standing. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P3_E1",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Quadriceps Stretch, Standing",
+      "alternate_names": [
+        "Standing Quadriceps Stretch"
+      ],
+      "position": "Standing",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E1_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Standing with your involved knee bent, gently pull heel toward buttocks, feeling a stretch in the front\nof the leg. Hold for 5 seconds.\nRepeat 10 times.",
+          "source_ids": [
+            "S7"
+          ],
+          "source_urls": [
+            "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P3_E1_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Hold on to the back of a chair or a wall for balance.\nBend your surgical knee and bring your heel up toward your buttock.\nGrasp your ankle with your hand and gently pull your heel closer to your body.\nHold this position for 30 to 60 seconds.\nTip Do not arch or twist your back.\nRepetitions: 2 to 3\nDays per week: 4 to 5",
+          "source_ids": [
+            "S8"
+          ],
+          "source_urls": [
+            "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Quadriceps Stretch, Standing is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P4_E1",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Step ups, forwards",
+      "alternate_names": [
+        "Step-ups"
+      ],
+      "position": "Standing",
+      "tool": "Stool",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E1_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Stand in front of a 20 – 40 cm step. Step up leading with your operated leg followed by the other leg. Step down\nwith the good leg first. Return to start position.",
+          "source_ids": [
+            "S9"
+          ],
+          "source_urls": [
+            "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P4_E1_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "1. Begin by shifting your weight to the operated leg as if you were to climb the stairs. The goal is to bring your opposite leg up to match your other\nleg. Do not place weight on the opposite leg.\n2. Hold for 5 seconds.\n3. Now slowly lower your opposite leg back to the floor by controlling the muscles of your operated leg. You will feel\nthe hip and thigh muscles contract during this exercise",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Step ups, forwards is an exercise in the Transitional phase for weeks 10 to 12. Position: Standing. Tool: Stool.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "stool"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_1_E2",
+      "phase_id": "P1-1",
+      "phase_name": "Initial",
+      "start_week": 0,
+      "end_week": 1,
+      "canonical_name": "Heel slides",
+      "alternate_names": [
+        "Knee flexion"
+      ],
+      "position": "Lying",
+      "tool": "Socks/sliding board/strap",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_1_E2_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "In lying, bend your knee by sliding your heel towards your\nbuttocks. You can use your other leg to help you as needed.\nPerform up to 20 times; repeat 2- 3 times daily.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_1_E2_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Lie on your back, place a sliding board on the bed, or a plastic sheet under your heel. Bend your knee by sliding your foot up and down the board or plastic\nsheet. Aim to increase the range of movement to full bend by 2 weeks postoperatively. If you find bending difficult, try putting a strap around your foot and, as\nyou slide up, assist the movement by pulling on the strap.",
+          "source_ids": [
+            "S2"
+          ],
+          "source_urls": [
+            "https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf"
+          ]
+        }
+      ],
+      "cautions": [
+        "Avoid active knee flexion to prevent hamstring strain on the posteromedial joint"
+      ],
+      "summary": "Heel slides is an exercise in the Initial phase for weeks 0 to 1. Position: Lying. Tool: Socks/sliding board/strap. Caution: Avoid active knee flexion to prevent hamstring strain on the posteromedial joint.",
+      "metadata": {
+        "has_caution": true,
+        "tools_normalized": [
+          "socks",
+          "sliding board",
+          "strap"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_2_E2",
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "canonical_name": "Leg extensions",
+      "alternate_names": [
+        "Knee flexion and extension"
+      ],
+      "position": "Sitting",
+      "tool": "Chair",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_2_E2_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Sit up straight on a chair or bench. \nTighten your thigh muscles and slowly straighten and raise your affected leg as high as possible. \nSqueeze your thigh muscles and hold this position for 5 seconds. Relax and bring your foot to the floor. Repeat. \nRepetitions: 3 sets of 10.\nDays per week: 4 to 5.\nDo not swing your leg or use forceful momentum to lift it higher.",
+          "source_ids": [
+            "S8"
+          ],
+          "source_urls": [
+            "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_2_E2_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Sit in a chair and bend your knee to allow your foot to\nrest on the floor. Practice bending and straightening\nyour knee. Pull your toes up towards you and tighten\nyour thigh to straighten your knee. Hold straight for 5\nseconds, relax and bend as far as you are able by\nsliding your foot on the floor.",
+          "source_ids": [
+            "S9"
+          ],
+          "source_urls": [
+            "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Leg extensions is an exercise in the Early phase for weeks 2 to 3. Position: Sitting. Tool: Chair.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "chair"
+        ],
+        "positions_normalized": [
+          "sitting"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P2_E2",
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "canonical_name": "Gluteals",
+      "alternate_names": [
+        "Bridges"
+      ],
+      "position": "Lying",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P2_E2_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Lying on your back with your knees bent and your arms\nby your sides. Squeeze your buttocks together and lift up to create\na bridge. Keep equal weight on each leg with your pelvis straight.\nBe careful not to push down on your neck or shoulders – use your\nbuttocks to do the work. Start with one set of 10, holding for 5 secs\nand increase the number of repetitions as you get stronger. Once\nyou can complete 20 reps holding for 10 sec each, change to single\nleg bridges. Complete the single-leg bridges on each leg",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P2_E2_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "1. While keeping your hands at your sides, begin by slowly lifting your bottom off the ground by tightening your leg and stomach muscles.\n2. Keep lifting as high as you can until your stomach is in line with your knees.\n3. Hold for 5 seconds.\n4. Next slowly return to the starting position\n\nsets: 3 \nrepetitions: 10\nhold: 5 seconds",
+          "source_ids": [
+            "S10"
+          ],
+          "source_urls": [
+            "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Gluteals is an exercise in the Intermediate phase for weeks 4 to 5. Position: Lying. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P3_E2",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Hamstring Stretch, Supine",
+      "alternate_names": [
+        "Supine Hamstring Stretch"
+      ],
+      "position": "Lying",
+      "tool": "Towel (optional)",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E2_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Lie on your back.\nBend your hip, grasping your thigh just above the knee.\nSlowly straighten your knee until you feel the tightness behind your knee. Hold for 5 seconds, then relax.\nRepeat 10 times.\nIf you do not feel this stretch, bend your hip a little more, and repeat.\nNo bouncing! Maintain a steady, prolonged stretch for the maximum benefit.",
+          "source_ids": [
+            "S7"
+          ],
+          "source_urls": [
+            "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P3_E2_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Lie on the floor with both legs bent.\nLift one leg off of the floor and bring the knee toward your chest.\nClasp your hands behind your thigh below your knee.\nStraighten your leg and then pull it gently toward your head,\nuntil you feel a stretch. (If you have difficulty clasping your hands\nbehind your leg, loop a towel around your thigh. Grasp the ends of\nthe towel and pull your leg toward you.)\nHold this position for 30 to 60 seconds.\nTip Do not put your hands at your knee joint and pull.\nRepetitions: 2 to 3\nDays per week: 4 to 5",
+          "source_ids": [
+            "S8"
+          ],
+          "source_urls": [
+            "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Hamstring Stretch, Supine is an exercise in the Late phase for weeks 6 to 9. Position: Lying. Tool: Towel (optional).",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "towel (optional)"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P4_E2",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Step ups: lateral",
+      "alternate_names": [
+        "Step-ups, Lateral"
+      ],
+      "position": "Standing",
+      "tool": "Stool",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E2_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Face sideways to the step, with your operated leg nearest the step. Step up sideways with the operated leg, followed by the other leg. Step down leading with the good leg first. Return to start position.",
+          "source_ids": [
+            "S9"
+          ],
+          "source_urls": [
+            "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P4_E2_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Stand sideways next to a 6-inch-high footstool or platform. The outside of your involved leg should be\nbeside the platform.\nStep up onto the platform, leading with your involved leg.\nStep down, returning to the starting position.\nRepeat 10 times.\nIncrease the height of the platform as your strength increases",
+          "source_ids": [
+            "S7"
+          ],
+          "source_urls": [
+            "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Step ups: lateral is an exercise in the Transitional phase for weeks 10 to 12. Position: Standing. Tool: Stool.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "stool"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_1_E3",
+      "phase_id": "P1-1",
+      "phase_name": "Initial",
+      "start_week": 0,
+      "end_week": 1,
+      "canonical_name": "Heel slides (sitting)",
+      "alternate_names": [
+        "Seated passive knee flexion"
+      ],
+      "position": "Sitting",
+      "tool": "Chair",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_1_E3_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "While sitting in a chair, slide the heel backward as if trying to get the foot underneath the chair.\nHold five seconds and slowly relieve the stretch by sliding the foot forward. You can help with the opposite foot if necessary.\nRepeat exercise 20 times, three times a day.",
+          "source_ids": [
+            "S3"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_1_E3_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Start with the knee extended, supported by your good leg. Let it slowly bend down with your good leg controlling the speed of bending.\nDo not push the bend beyond what is comfortable.\nUse your good leg to bring your operated leg back up to the starting position. Perform three times per day.",
+          "source_ids": [
+            "S5"
+          ],
+          "source_urls": [
+            "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
+          ]
+        }
+      ],
+      "cautions": [
+        "Avoid active knee flexion to prevent hamstring strain on the posteromedial joint"
+      ],
+      "summary": "Heel slides (sitting) is an exercise in the Initial phase for weeks 0 to 1. Position: Sitting. Tool: Chair. Caution: Avoid active knee flexion to prevent hamstring strain on the posteromedial joint.",
+      "metadata": {
+        "has_caution": true,
+        "tools_normalized": [
+          "chair"
+        ],
+        "positions_normalized": [
+          "sitting"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_2_E3",
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "canonical_name": "Straight leg raises, supine",
+      "alternate_names": [
+        "Flexion straight leg raises"
+      ],
+      "position": "Lying",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_2_E3_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Lying flat, lock your knee straight and then lift the\nwhole leg about 30cms off the bed. Hold for 3 seconds and relax. Repeat 10 to 20 times, 2-3 times\na day.",
+          "source_ids": [
+            "S2"
+          ],
+          "source_urls": [
+            "https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_2_E3_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Lying on your back, bend the uninvolved knee and put it on the floor. Tighten the quads to keep the knee straight, pull your toes back towards your head and smoothly lift you leg from the floor. Hold for\nseveral seconds and then lower. If you cannot keep your knee straight, use a strap around your foot, held in your hand to assist with the lifting.",
+          "source_ids": [
+            "S5"
+          ],
+          "source_urls": [
+            "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
+          ]
+        }
+      ],
+      "cautions": [
+        "Do not perform straight leg raise if you have a knee extension lag"
+      ],
+      "summary": "Straight leg raises, supine is an exercise in the Early phase for weeks 2 to 3. Position: Lying. Tool: No. Caution: Do not perform straight leg raise if you have a knee extension lag.",
+      "metadata": {
+        "has_caution": true,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P2_E3",
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "canonical_name": "Stationary bicycle",
+      "alternate_names": [
+        "Exercise Bike"
+      ],
+      "position": "Sitting",
+      "tool": "Bicycle",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P2_E3_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Utilize a stationary bicycle to move the knee joint and increase knee flexion. If you cannot pedal all the way around, then keep the foot of your operated leg on the pedal, and pedal back and forth until your knee will bend far enough to allow a full cycle. Most people are able to achieve a full cycle revolution backwards first, followed by forward. You may ride the cycle with no resistance for 10 to 20 minutes a day. Set the seat height so that when you are sitting on the bicycle seat., your knee is fully extended with the heel resting on the pedal in the fully bottom position. You should then ride the bicycle with your forefoot resting on the pedal.",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P2_E3_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "If you have access to an exercise bike, adjust the seat height so that the bottom of your foot just touches the\npedal and complete a full revolution. As you become stronger, slowly increase the tension on the bike.\nStart pedaling for 10 minutes a day. Increase the duration by 1 minute a day until you are pedaling for 20\nminutes a day",
+          "source_ids": [
+            "S3"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Stationary bicycle is an exercise in the Intermediate phase for weeks 4 to 5. Position: Sitting. Tool: Bicycle.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "bicycle"
+        ],
+        "positions_normalized": [
+          "sitting"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P3_E3",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Partial Squat with chair",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Chair",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E3_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Hold onto a sturdy chair or counter with your feet 6 to 12 inches from the chair or counter. While keeping your back straight, slowly bend your knees. DO NOT go any lower than 90°. Hold for 5 to 10 seconds. Slowly come back up. Relax. Repeat 10 times.",
+          "source_ids": [
+            "S7"
+          ],
+          "source_urls": [
+            "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P3_E3_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Hold onto a sturdy chair or counter with your feet slightly apart. Bend both of your knees gently, making\nsure you maintain a straight posture, to keep your leg alignment correct. Do not bend any lower than 90\ndegrees. Hold for 5 – 10 seconds, then slowly return to standing.",
+          "source_ids": [
+            "S9"
+          ],
+          "source_urls": [
+            "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Partial Squat with chair is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: Chair.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "chair"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P4_E3",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Lunges",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E3_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Standing with feet move down and lunge. Control the descent ensuring your knee that is forward does not move beyond your toes. Start with 1 set of 10, holding each lunge for 5 secs. Increase the number of reps as your strength increases up to 3 sets of 10.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P4_E3_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "While holding a firm surface, place your operated leg on a stair and gently lunge forward to increase\nthe bend in your knee.\n Hold 5 seconds.\n Do 5 repetitions.\n Do 4 times per day.",
+          "source_ids": [
+            "S11"
+          ],
+          "source_urls": [
+            "https://www.orthowood.com/uploads/2014/01/Knee-Replacement-Rehabilitation.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Lunges is an exercise in the Transitional phase for weeks 10 to 12. Position: Standing. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_1_E4",
+      "phase_id": "P1-1",
+      "phase_name": "Initial",
+      "start_week": 0,
+      "end_week": 1,
+      "canonical_name": "Knee locking",
+      "alternate_names": [
+        "Quadriceps setting"
+      ],
+      "position": "Lying",
+      "tool": "Towel (optional)",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_1_E4_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "With a rolled towel under your heel, tighten the quadriceps muscle at the front of your thigh and push your knee into the bed. Hold for 5 seconds and relax. Repeat 10 to 20 times, 2-3 times daily.",
+          "source_ids": [
+            "S2"
+          ],
+          "source_urls": [
+            "https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_1_E4_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Lie on your back with your knee extended fully straight. Tighten and hold the front thigh muscles making the knee flat and straight. If done correctly, the kneecap will slide slightly upward toward the thigh muscles as the muscles contract. The tightening action of the quadriceps should make your knee straighten and be pushed flat against the bed or floor. Hold for five seconds for each contraction. Do 20 repetitions whenever you think about it (many times a day).",
+          "source_ids": [
+            "S3"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Knee locking is an exercise in the Initial phase for weeks 0 to 1. Position: Lying. Tool: Towel (optional).",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "towel (optional)"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_2_E4",
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "canonical_name": "Hip Abduction",
+      "alternate_names": [],
+      "position": "Lying",
+      "tool": "No",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P1_2_E4_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Lie on your unoperated side. Keep the knees fully extended. Raise the operated\nlimb upward to a 45 degree angle as illustrated. Hold one second, then lower slowly.\nRepeat 20 times.",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P1_2_E4_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Lie with the operated side up, have the lower leg bent slightly for balance. Straighten the operated leg\nby tightening the quads and then slowly lift up to the side towards the ceiling. Hold 3 seconds then\nlower.",
+          "source_ids": [
+            "S5"
+          ],
+          "source_urls": [
+            "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Hip Abduction is an exercise in the Early phase for weeks 2 to 3. Position: Lying. Tool: No.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "no"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P2_E4",
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "canonical_name": "Double limb standing balance",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Uneven surface",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P2_E4_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Double limb standing balance utilizing uneven surface (wobble board/thick carpet/foam block/camping mattress)",
+          "source_ids": [
+            "S1"
+          ],
+          "source_urls": [
+            "https://www.massgeneral.org/assets/MGH/pdf/orthopaedics/sports-medicine/physical-therapy/rehabilitation-protocol-for-meniscus-repair.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Double limb standing balance is an exercise in the Intermediate phase for weeks 4 to 5. Position: Standing. Tool: Uneven surface.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "uneven surface"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 1
+      }
+    },
+    {
+      "exercise_id": "P3_E4",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Standing hamstring curl",
+      "alternate_names": [
+        "Hamstring curls"
+      ],
+      "position": "Standing",
+      "tool": "Chair/table",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E4_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Stand facing a table, using the table for balance and support. While standing on the unoperated limb\nbend the knee of the operated side and raise the heel toward the buttock. This flexed position for\none second. Slowly lower the foot back to the floor. Keep the thighs aligned as illustrated. Repeat\n20 times.",
+          "source_ids": [
+            "S4"
+          ],
+          "source_urls": [
+            "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P3_E4_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Hold onto the back of a chair or a wall for balance. Bend your affected knee and raise your heel toward the ceiling as far as possible without pain. Hold this position for 5 seconds and then relax. Repeat.\nRepetitions: 3 sets of 10\nDays per week: 4 to 5",
+          "source_ids": [
+            "S8"
+          ],
+          "source_urls": [
+            "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Standing hamstring curl is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: Chair/table.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "chair",
+          "table"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P4_E4",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Step downs",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Stool/a step",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E4_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Do graduated heights, starting at 4\" and increasing to 8\".\nStart with one leg standing on the step and slowly bend your knee to lower your other leg to lightly touch floor. Keep all of your weight through the leg\nthat is on the step. Start with one set of 10 reps, holding at the bottom of the step down for 5 secs. Increase the number of reps as your strength increases, up to 20 reps with 15 secs holds on each leg.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        },
+        {
+          "chunk_id": "P4_E4_C2",
+          "chunk_type": "exercise_evidence",
+          "text": "Standing on top of a step, slowly lower your\nUNOPERATED leg to the floor.\n Use a railing for support if needed.\n Do 10 repetitions.\n Do 4 times per day.",
+          "source_ids": [
+            "S11"
+          ],
+          "source_urls": [
+            "https://www.orthowood.com/uploads/2014/01/Knee-Replacement-Rehabilitation.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Step downs is an exercise in the Transitional phase for weeks 10 to 12. Position: Standing. Tool: Stool/a step.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "stool",
+          "a step"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 2
+      }
+    },
+    {
+      "exercise_id": "P1_E9",
+      "phase_id": "P1-2",
+      "phase_name": "Early",
+      "start_week": 2,
+      "end_week": 3,
+      "canonical_name": "P1_E9",
+      "alternate_names": [],
+      "position": null,
+      "tool": null,
+      "instruction_chunks": [],
+      "cautions": [],
+      "summary": "P1_E9 is an exercise in the Early phase for weeks 2 to 3.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [],
+        "positions_normalized": [],
+        "source_count": 0
+      }
+    },
+    {
+      "exercise_id": "P2_E5",
+      "phase_id": "P2",
+      "phase_name": "Intermediate",
+      "start_week": 4,
+      "end_week": 5,
+      "canonical_name": "P2_E5",
+      "alternate_names": [],
+      "position": null,
+      "tool": null,
+      "instruction_chunks": [],
+      "cautions": [],
+      "summary": "P2_E5 is an exercise in the Intermediate phase for weeks 4 to 5.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [],
+        "positions_normalized": [],
+        "source_count": 0
+      }
+    },
+    {
+      "exercise_id": "P3_E5",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Hip abduction, standing",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Resistance band",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E5_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "With a resistance band around your outside thigh just\nabove your knee, lift your leg to place slight tension on the band. Move\nthis leg sideways slowly against the resistance of the band using the\nmuscles in your buttock and your hip. Start with 1 set of 10 reps and\nincrease to 3 sets of 15 reps.",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Hip abduction, standing is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: Resistance band.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "resistance band"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 1
+      }
+    },
+    {
+      "exercise_id": "P4_E5",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Single leg squats",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Chair (optional)",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E5_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Initially use a chair or railing for support. Stand on one leg and slowly bend your knee to squat. Bend as far as you can while keeping control. Start\nwith one set of 10, holding the squat for 5 secs; increase the number of repetitions as you get stronger. Work up to performing squats without support with ‘contraction’ time at least double the ‘rest’ time on the EMS. (Up to 20 reps x 15 secs each leg).",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Single leg squats is an exercise in the Transitional phase for weeks 10 to 12. Position: Standing. Tool: Chair (optional).",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "chair (optional)"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 1
+      }
+    },
+    {
+      "exercise_id": "P3_E6",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Hip extension, standing",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Resistance band",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P3_E6_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "Do not start this exercise until 6 weeks post op. Stand\nwith legs shoulder width apart with a resistance band around one of\nyour thighs just above your knee. Extend your leg to place slight tension\non the resistance band. Move the leg backwards slowly against the\nresistance of the band using the muscles in your buttock and the back\nof your thigh. Start with 1 set of 10 reps and increase to 3 sets of 15\nreps",
+          "source_ids": [
+            "S6"
+          ],
+          "source_urls": [
+            "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Hip extension, standing is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: Resistance band.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "resistance band"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 1
+      }
+    },
+    {
+      "exercise_id": "P4_E6",
+      "phase_id": "P4",
+      "phase_name": "Transitional",
+      "start_week": 10,
+      "end_week": 12,
+      "canonical_name": "Leg presses",
+      "alternate_names": [],
+      "position": "Lying",
+      "tool": "Resistance band",
+      "instruction_chunks": [
+        {
+          "chunk_id": "P4_E6_C1",
+          "chunk_type": "exercise_instruction",
+          "text": "• Place the center of the elastic band at the arch of your foot and\nhold the ends in each hand. Lie on the floor with your elbows bent.\n• Tighten the thigh muscle of your affected leg and bring your knee\ntoward your chest.\n• Flex your foot and slowly straighten your leg directly in front of\nyou, pushing against the elastic band.\n• Hold this position for 2 seconds. Relax and bring your leg\nto the floor. Repeat.",
+          "source_ids": [
+            "S8"
+          ],
+          "source_urls": [
+            "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf"
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Leg presses is an exercise in the Transitional phase for weeks 10 to 12. Position: Lying. Tool: Resistance band.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "resistance band"
+        ],
+        "positions_normalized": [
+          "lying"
+        ],
+        "source_count": 1
+      }
+    },
+    {
+      "exercise_id": "P3_E7",
+      "phase_id": "P3",
+      "phase_name": "Late",
+      "start_week": 6,
+      "end_week": 9,
+      "canonical_name": "Wall slides",
+      "alternate_names": [],
+      "position": "Standing",
+      "tool": "Wall",
+      "instruction_chunks": [
+        {
+          "chunk_id": "Stand leaning with you back against a wall, feet about 20 cms\naway from the wall. Slowly slide down the wall allowing your hips\nand knees to bend gently. As your knee regains strength, aim to\nslide further down until your hips and knees are at right angles.\nReturn to starting position.",
+          "chunk_type": "exercise_instruction",
+          "text": "S9",
+          "source_ids": [
+            "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf"
+          ],
+          "source_urls": [
+            "1. Start by slowly bending your knees and sliding your back down the wall until your knees are at a comfortable bend.\n2. Try to hold the position for 5 seconds before slowly straightening your knees and sliding your back up the wall.\n3. Be sure to concentrate and keep your knees directly over your toes at all times during the exercise."
+          ]
+        }
+      ],
+      "cautions": [],
+      "summary": "Wall slides is an exercise in the Late phase for weeks 6 to 9. Position: Standing. Tool: Wall.",
+      "metadata": {
+        "has_caution": false,
+        "tools_normalized": [
+          "wall"
+        ],
+        "positions_normalized": [
+          "standing"
+        ],
+        "source_count": 1
+      }
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "S1",
+      "source_url": "https://www.massgeneral.org/assets/MGH/pdf/orthopaedics/sports-medicine/physical-therapy/rehabilitation-protocol-for-meniscus-repair.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S2",
+      "source_url": "https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S3",
+      "source_url": "https://sportmed.com/wp-content/uploads/Knee_scope_11.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S4",
+      "source_url": "https://sportmed.com/wp-content/uploads/Knee_Scope_21.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S5",
+      "source_url": "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S6",
+      "source_url": "https://banffsportmed.ca/wp-content/uploads/2025/06/Post-Op-Rehab-Scope-May-2012.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S7",
+      "source_url": "https://jaredleemd.com/wp-content/uploads/2025/06/Post-op-Knee-Arthroscopy-Home-Exercise-Program.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S8",
+      "source_url": "https://orthoinfo.aaos.org/globalassets/pdfs/2023-rehab_knee_10-16-23.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S9",
+      "source_url": "http://www.kneeclinic.info/download/CKCGHCKneeArthroscopyExercises040612.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S10",
+      "source_url": "https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    },
+    {
+      "source_id": "S11",
+      "source_url": "https://www.orthowood.com/uploads/2014/01/Knee-Replacement-Rehabilitation.pdf",
+      "title": null,
+      "publisher": null,
+      "document_type": "pdf"
+    }
+  ]
+}

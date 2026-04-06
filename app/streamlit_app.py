@@ -30,6 +30,8 @@ from wellnessbot.storage.exercise_history_store import (
     clear_exercise_history,
 )
 from wellnessbot.kg.kg import phase_from_weeks, get_protocol_for_surgery_type
+from wellnessbot.llm_response import generate_final_response_text
+from wellnessbot.rag import retrieve_recommendation_chunks
 
 CURRENT_PAGE = "chat"
 
@@ -301,7 +303,55 @@ def _get_latest_asked_slot() -> str | None:
     return None
 
 
-def _build_assistant_text(result: dict) -> str:
+def _get_recommendation_evidence_rows(result: dict) -> list[dict]:
+    planner = ((result.get("audit_trace") or {}).get("planner") or {})
+    if not planner or planner.get("type") == "alternatives":
+        return []
+
+    exercise_id = planner.get("exercise_id") or ""
+    if not exercise_id:
+        return []
+
+    required_tools = planner.get("equipment_required") or []
+    evidence_chunks = planner.get("evidence_chunks") or []
+
+    rag_payload = retrieve_recommendation_chunks(
+        exercise_id=exercise_id,
+        evidence_chunks=evidence_chunks,
+        required_tools=required_tools,
+        top_k=len(evidence_chunks) or 3,
+    )
+    return rag_payload.get("results") or []
+
+
+def _build_recommendation_evidence_text(result: dict) -> str:
+    rows = _get_recommendation_evidence_rows(result)
+    if not rows:
+        return ""
+
+    def _format_source_suffix(row: dict) -> str:
+        source_id = (row.get("source_id") or "").strip()
+        source_url = (row.get("source_url") or "").strip()
+        if source_id and source_url:
+            return f"({source_id}: {source_url})"
+        if source_id:
+            return f"({source_id})"
+        if source_url:
+            return f"({source_url})"
+        return ""
+
+    evidence_lines = [
+        f"- {row.get('text', '').strip()} {_format_source_suffix(row)}".rstrip()
+        for row in rows
+        if (row.get("text") or "").strip()
+    ]
+    if not evidence_lines:
+        return ""
+
+    return "\n\n**Evidence support:**\n" + "\n".join(evidence_lines)
+
+
+def _build_deterministic_assistant_text(result: dict) -> str:
     mode = result.get("mode", "final")
 
     if mode == "clarify":
@@ -351,10 +401,13 @@ def _build_assistant_text(result: dict) -> str:
         else:
             ex_name = planner.get("exercise_name") or planner.get("exercise_id")
             stop = planner.get("stop_conditions", [])
+            evidence_block = _build_recommendation_evidence_text(result)
 
             planner_line = f"\n\n**Recommended exercise:** {ex_name}"
             if stop:
                 planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
+            if evidence_block:
+                planner_line += evidence_block
 
     assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}{rule_line}{cite_line}"
 
@@ -366,6 +419,31 @@ def _build_assistant_text(result: dict) -> str:
         )
 
     return assistant_text
+
+
+def _build_assistant_text(result: dict) -> str:
+    mode = result.get("mode", "final")
+    if mode == "clarify":
+        return _build_deterministic_assistant_text(result)
+
+    action = ((result.get("decision") or {}).get("action") or "").strip()
+    planner = ((result.get("audit_trace") or {}).get("planner") or {})
+
+    if action == "RECOMMEND" and planner and planner.get("exercise_id"):
+        evidence_rows = _get_recommendation_evidence_rows(result)
+        try:
+            assistant_text = generate_final_response_text(result, evidence_rows)
+            if _result_should_end_chat(result):
+                assistant_text += (
+                    "\n\n---\n\n"
+                    "✅ **Chat ended.**\n\n"
+                    "Please click **End conversation / Restart** or **Clear chat only** to start a new case."
+                )
+            return assistant_text
+        except Exception as exc:
+            logging.exception("Final-response verbalizer failed: %s", exc)
+
+    return _build_deterministic_assistant_text(result)
 
 
 def _handle_pipeline_result(result: dict) -> None:
@@ -409,6 +487,40 @@ def _handle_pipeline_result(result: dict) -> None:
                 },
                 keep_last=50,
             )
+
+
+def _render_rag_tab(result: dict) -> None:
+    planner = ((result.get("audit_trace") or {}).get("planner") or {})
+    if not planner or planner.get("type") == "alternatives":
+        st.info("RAG view is available for concrete exercise recommendations.")
+        return
+
+    rows = _get_recommendation_evidence_rows(result)
+
+    if not rows:
+        st.warning("No RAG evidence rows were found for this recommendation.")
+        return
+
+    planner = ((result.get("audit_trace") or {}).get("planner") or {})
+    evidence_chunks = planner.get("evidence_chunks") or []
+    st.caption(
+        "BM25 retrieval query "
+        f"(chunk_id): {' '.join(item.get('chunk_id', '') for item in evidence_chunks if item.get('chunk_id'))}"
+    )
+    st.dataframe(
+        [
+            {
+                "chunk_id": row.get("chunk_id", ""),
+                "source_id": row.get("source_id", ""),
+                "source_link": row.get("source_url", ""),
+                "tool": row.get("tool", ""),
+                "text": row.get("text", ""),
+            }
+            for row in rows
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
 
 
 st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="centered")
@@ -804,10 +916,15 @@ for i, msg in enumerate(st.session_state.chat):
                 st.toast("Feedback saved (👎)")
                 st.rerun()
 
-        with st.expander("Show NLU JSON"):
+        rag_tab, nlu_tab, audit_tab = st.tabs(["RAG", "NLU JSON", "Audit Trace"])
+
+        with rag_tab:
+            _render_rag_tab(result)
+
+        with nlu_tab:
             st.code(json.dumps(result["nlu"], indent=2), language="json")
 
-        with st.expander("Show Audit Trace (rules, citations, planner)"):
+        with audit_tab:
             st.code(json.dumps(result["audit_trace"], indent=2), language="json")
 
 st.divider()
