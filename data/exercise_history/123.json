@@ -8,5 +8,15 @@
     "pain_score": 1,
     "swelling_score": 1,
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-08T12:23:01.825344+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": "P1_1",
+    "priority": 1,
+    "pain_score": 1,
+    "swelling_score": 1,
+    "action": "RECOMMEND"
   }
 ]

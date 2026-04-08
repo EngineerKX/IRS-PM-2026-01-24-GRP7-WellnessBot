@@ -425,7 +425,7 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             if evidence_block:
                 planner_line += evidence_block
 
-    assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}"
+    assistant_text = f"{primary_rationale}{extra_block}{planner_line}"
 
     if _result_should_end_chat(result):
         assistant_text += (
