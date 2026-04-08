@@ -6,6 +6,10 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -348,7 +352,19 @@ def _build_recommendation_evidence_text(result: dict) -> str:
     if not evidence_lines:
         return ""
 
-    return "\n\n**Evidence support:**\n" + "\n".join(evidence_lines)
+    return "\n\n**References:**\n" + "\n".join(evidence_lines)
+
+
+def _build_how_to_perform_text(result: dict) -> str:
+    rows = _get_recommendation_evidence_rows(result)
+    if not rows:
+        return ""
+
+    top_text = (rows[0].get("text") or "").strip()
+    if not top_text:
+        return ""
+
+    return "\n\n**How to Perform:**\n- " + top_text
 
 
 def _build_deterministic_assistant_text(result: dict) -> str:
@@ -377,18 +393,11 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             continue
 
         if rid.startswith("R_SELFCARE_"):
-            extra_lines.append(f"**Supportive care:** {rationale}")
+            extra_lines.append(rationale)
 
     extra_block = ""
     if extra_lines:
         extra_block = "\n\n" + "\n\n".join(extra_lines)
-
-    rule_ids = result["decision"].get("rule_ids", [])
-    rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
-
-    citations = result["decision"].get("citations", [])
-    cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
-    cite_line = f"\n\nSources: {cite_str}" if citations else ""
 
     planner = result["audit_trace"].get("planner")
     planner_line = ""
@@ -400,16 +409,23 @@ def _build_deterministic_assistant_text(result: dict) -> str:
                 planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
         else:
             ex_name = planner.get("exercise_name") or planner.get("exercise_id")
-            stop = planner.get("stop_conditions", [])
-            evidence_block = _build_recommendation_evidence_text(result)
+            selfcare_items = planner.get("selfcare_routine", []) or []
+            selfcare_block = ""
+            if selfcare_items:
+                selfcare_block = "\n\n**Self Care:**\n- " + "\n- ".join(selfcare_items)
+            elif extra_lines:
+                selfcare_block = "\n\n**Self Care:**\n- " + "\n- ".join(extra_lines)
 
-            planner_line = f"\n\n**Recommended exercise:** {ex_name}"
-            if stop:
-                planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
+            evidence_block = _build_recommendation_evidence_text(result)
+            how_to_block = _build_how_to_perform_text(result)
+
+            planner_line = selfcare_block
+            planner_line += f"\n\n**Recommended exercise:** {ex_name}"
+            planner_line += how_to_block
             if evidence_block:
                 planner_line += evidence_block
 
-    assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}{rule_line}{cite_line}"
+    assistant_text = f"**{action}**\n\n{primary_rationale}{extra_block}{planner_line}"
 
     if _result_should_end_chat(result):
         assistant_text += (

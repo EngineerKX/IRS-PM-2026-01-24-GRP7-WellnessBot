@@ -18,7 +18,7 @@ Use professional, calm, patient-friendly clinical language.
 
 Required sections when data exists, in this order:
 1. Self Care
-2. Recommended Exercise
+2. Recommended exercise
 3. How To Perform
 4. References
 
@@ -134,7 +134,7 @@ def build_final_response_messages(
         "- In How To Perform, copy exactly one item from how_to_perform as provided.\n"
         "- Do not mention chunk_id in the patient-facing prose unless explicitly asked.\n"
         "- Keep citations attached to each References bullet using the provided source_id and source_link.\n"
-        "- Label the exercise section 'Recommended Exercise', the evidence section 'References', and the self-care section 'Self Care'.\n"
+        "- Label the exercise section 'Recommended exercise', the evidence section 'References', and the self-care section 'Self Care'.\n"
     )
 
     return [
