@@ -373,20 +373,9 @@ def _build_deterministic_assistant_text(result: dict) -> str:
     if mode == "clarify":
         return result.get("question", "I need a bit more information.")
 
-    action = result["decision"]["action"]
-
     rules = result["audit_trace"].get("rules_fired", [])
-    top_rule = next((r for r in rules if r.get("action") == action), None)
-    if top_rule is None and rules:
-        top_rule = rules[0]
-
-    primary_rationale = top_rule.get("rationale") if top_rule else "Decision generated."
-
     extra_lines = []
     for r in rules:
-        if r is top_rule:
-            continue
-
         rid = r.get("rule_id", "")
         rationale = (r.get("rationale") or "").strip()
         if not rationale:
@@ -395,9 +384,7 @@ def _build_deterministic_assistant_text(result: dict) -> str:
         if rid.startswith("R_SELFCARE_"):
             extra_lines.append(rationale)
 
-    extra_block = ""
-    if extra_lines:
-        extra_block = "\n\n" + "\n\n".join(extra_lines)
+    extra_lines = list(dict.fromkeys(extra_lines))
 
     planner = result["audit_trace"].get("planner")
     planner_line = ""
@@ -425,7 +412,7 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             if evidence_block:
                 planner_line += evidence_block
 
-    assistant_text = f"{primary_rationale}{extra_block}{planner_line}"
+    assistant_text = planner_line.strip() or "Recommendation generated."
 
     if _result_should_end_chat(result):
         assistant_text += (

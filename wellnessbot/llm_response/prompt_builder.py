@@ -22,6 +22,9 @@ Required sections when data exists, in this order:
 3. How To Perform
 4. References
 
+Do not add any introductory summary sentence before the first section.
+Do not restate clinical rationale such as "Mild symptoms noted".
+
 How To Perform grounding rule:
 - Use ONLY the exact strings provided in how_to_perform.
 - Do NOT paraphrase, summarize, or add new procedural details.
@@ -114,7 +117,6 @@ def build_final_response_payload(
             "stop_conditions": _safe_list(planner.get("stop_conditions")),
         },
         "supportive_care": _safe_list(planner.get("selfcare_routine")),
-        "rationale": _primary_rationale(result),
         "how_to_perform": _build_how_to_perform_lines(normalized_evidence),
         "evidence_rows": normalized_evidence,
     }
@@ -129,6 +131,7 @@ def build_final_response_messages(
         "Generate the final recommendation card from the structured data below.\n\n"
         f"Structured input:\n{json.dumps(payload, indent=2, ensure_ascii=True)}\n\n"
         "Writing instructions:\n"
+        "- Start directly with the first available section. Do not add any lead-in sentence before Self Care.\n"
         "- Use the exercise_name exactly as provided.\n"
         "- Do not generate a Safety Note or Why This Is Appropriate section.\n"
         "- In How To Perform, copy exactly one item from how_to_perform as provided.\n"
