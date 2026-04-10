@@ -65,8 +65,8 @@ def test_build_final_response_payload_normalizes_expected_fields():
     assert payload["recommendation"]["exercise_name"] == "Straight leg raises, supine"
     assert payload["supportive_care"] == ["Ice and elevate for 10 minutes after exercise if needed."]
     assert "rationale" not in payload
+    assert len(payload["evidence_rows"]) == 1
     assert payload["evidence_rows"][0]["source_link"] == "https://www.melbournehipandknee.com.au/pdf/knee-arthroscopy-rehabilitation-protocol.pdf"
-    assert payload["evidence_rows"][1]["source_link"] == "https://hamishlove.nz/wp-content/uploads/2017/10/SSO-Knee-Initial-post-op-rehab.pdf"
 
 
 def test_build_final_response_messages_contains_system_prompt_and_json_payload():

@@ -333,6 +333,11 @@ def _build_recommendation_evidence_text(result: dict) -> str:
     if not rows:
         return ""
 
+    top_row = rows[0]
+    top_text = (top_row.get("text") or "").strip()
+    if not top_text:
+        return ""
+
     def _format_source_suffix(row: dict) -> str:
         source_id = (row.get("source_id") or "").strip()
         source_url = (row.get("source_url") or "").strip()
@@ -344,11 +349,7 @@ def _build_recommendation_evidence_text(result: dict) -> str:
             return f"({source_url})"
         return ""
 
-    evidence_lines = [
-        f"- {row.get('text', '').strip()} {_format_source_suffix(row)}".rstrip()
-        for row in rows
-        if (row.get("text") or "").strip()
-    ]
+    evidence_lines = [f"- {top_text} {_format_source_suffix(top_row)}".rstrip()]
     if not evidence_lines:
         return ""
 

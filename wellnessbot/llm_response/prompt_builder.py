@@ -98,6 +98,8 @@ def build_final_response_payload(
     nlu = result.get("nlu") or {}
     state = ((result.get("audit_trace") or {}).get("state") or {})
     normalized_evidence = _normalize_evidence_rows(evidence_rows)
+    how_to_perform_lines = _build_how_to_perform_lines(normalized_evidence)
+    filtered_evidence = [row for row in normalized_evidence if row["text"] in how_to_perform_lines]
 
     return {
         "patient_context": {
@@ -117,8 +119,8 @@ def build_final_response_payload(
             "stop_conditions": _safe_list(planner.get("stop_conditions")),
         },
         "supportive_care": _safe_list(planner.get("selfcare_routine")),
-        "how_to_perform": _build_how_to_perform_lines(normalized_evidence),
-        "evidence_rows": normalized_evidence,
+        "how_to_perform": how_to_perform_lines,
+        "evidence_rows": filtered_evidence,
     }
 
 
