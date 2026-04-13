@@ -107,7 +107,7 @@ def _result_should_end_chat(result: dict) -> bool:
     return False
 
 
-def build_welcome_message(profile: dict | None = None) -> dict:
+def build_welcome_message(profile: dict | None = None, display_name: str = "") -> dict:
     profile = profile or {}
 
     surgery_type = normalize_surgery_type_value(
@@ -164,7 +164,7 @@ def build_welcome_message(profile: dict | None = None) -> dict:
     return {
         "role": "assistant",
         "text": (
-            "👋 Welcome to the Wellnessbot.\n\n"
+            f"👋 Welcome to the Wellnessbot{', ' + display_name if display_name else ''}.\n\n"
             "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
             f"{phase_line}"
             f"{question}"
@@ -276,7 +276,7 @@ def _reset_chat_session(preserved_profile: dict, keep_profile_loaded: bool = Tru
         "equipment_available": preserved_profile.get("equipment_available", []) or [],
     }
 
-    st.session_state.chat = [build_welcome_message(clean_profile)]
+    st.session_state.chat = [build_welcome_message(clean_profile, display_name=(st.session_state.get("display_name") or "").strip())]
     st.session_state.feedback_state = {}
     st.session_state.conv_state = clean_profile
     st.session_state.sync_core_profile_from_conv = True
@@ -365,7 +365,7 @@ def _build_how_to_perform_text(result: dict) -> str:
     if not top_text:
         return ""
 
-    return "\n\n**How to Perform:**\n- " + top_text
+    return "\n\n**<u>HOW TO PERFORM</u>**\n- " + top_text
 
 
 def _build_deterministic_assistant_text(result: dict) -> str:
@@ -400,15 +400,15 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             selfcare_items = planner.get("selfcare_routine", []) or []
             selfcare_block = ""
             if selfcare_items:
-                selfcare_block = "\n\n**Self Care:**\n- " + "\n- ".join(selfcare_items)
+                selfcare_block = "\n\n**<u>SELF CARE</u>**\n- " + "\n- ".join(selfcare_items)
             elif extra_lines:
-                selfcare_block = "\n\n**Self Care:**\n- " + "\n- ".join(extra_lines)
+                selfcare_block = "\n\n**<u>SELF CARE</u>**\n- " + "\n- ".join(extra_lines)
 
             evidence_block = _build_recommendation_evidence_text(result)
             how_to_block = _build_how_to_perform_text(result)
 
             planner_line = selfcare_block
-            planner_line += f"\n\n**Recommended exercise:** {ex_name}"
+            planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{ex_name}"
             planner_line += how_to_block
             if evidence_block:
                 planner_line += evidence_block
@@ -425,6 +425,24 @@ def _build_deterministic_assistant_text(result: dict) -> str:
     return assistant_text
 
 
+_HEADER_REPLACEMENTS = [
+    # Match LLM header variants: plain text, bold (**...**), or heading (###)
+    # with optional trailing colon, at start of a line.
+    # The replacement ends with \n\n to ensure content starts on a new line.
+    (r"(?im)^(?:\*\*|#{1,4}\s*)?self\s*care\s*:?(?:\*\*)?$", "**<u>SELF CARE</u>**\n"),
+    (r"(?im)^(?:\*\*|#{1,4}\s*)?recommended\s*exercise\s*:?(?:\*\*)?$", "**<u>RECOMMENDED EXERCISE</u>**\n"),
+    (r"(?im)^(?:\*\*|#{1,4}\s*)?how\s*to\s*perform\s*:?(?:\*\*)?$", "**<u>HOW TO PERFORM</u>**\n"),
+    (r"(?im)^(?:\*\*|#{1,4}\s*)?references\s*:?(?:\*\*)?$", "**<u>REFERENCES</u>**\n"),
+]
+
+
+def _normalise_llm_headers(text: str) -> str:
+    import re
+    for pattern, replacement in _HEADER_REPLACEMENTS:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
 def _build_assistant_text(result: dict) -> str:
     mode = result.get("mode", "final")
     if mode == "clarify":
@@ -436,7 +454,7 @@ def _build_assistant_text(result: dict) -> str:
     if action == "RECOMMEND" and planner and planner.get("exercise_id"):
         evidence_rows = _get_recommendation_evidence_rows(result)
         try:
-            assistant_text = generate_final_response_text(result, evidence_rows)
+            assistant_text = _normalise_llm_headers(generate_final_response_text(result, evidence_rows))
             if _result_should_end_chat(result):
                 assistant_text += (
                     "\n\n---\n\n"
@@ -528,8 +546,9 @@ def _render_rag_tab(result: dict) -> None:
 
 
 st.set_page_config(page_title="Wellnessbot - Rehab Decision Support", layout="centered")
-st.title("Wellnessbot - Rehab Decision Support")
-st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
+st.title("Rehabilitation Decision Support")
+# st.caption("Decision brain = Rules + KG + Planner. LLM (optional) is NLU only. Not medical advice.")
+st.caption("Evidence-based rehab recommendations tailored to your recovery stage. Not a medical advice.")
 
 if "conv_state" not in st.session_state:
     st.session_state.conv_state = {}
@@ -795,10 +814,10 @@ with st.container():
 
     with col1:
         st.session_state.mock_toggle = st.toggle(
-            "MOCK_NLU",
+            "MOCK DATA",
             value=st.session_state.mock_toggle,
-            help="ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
-            disabled=not st.session_state.profile_loaded,
+            help="Disabled. Always off. ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
+            disabled=True or st.session_state.profile_loaded,
         )
 
     with col2:
@@ -830,7 +849,7 @@ for i, msg in enumerate(st.session_state.chat):
         continue
 
     with st.chat_message("assistant"):
-        st.write(msg["text"])
+        st.markdown(msg["text"], unsafe_allow_html=True)
 
         result = msg.get("result")
         if not result:
@@ -843,25 +862,20 @@ for i, msg in enumerate(st.session_state.chat):
             nlu_turn = result.get("nlu_turn", {})
             nlu_source = nlu_turn.get("nlu_source", "unknown")
 
-            st.caption(
-                f"mode: **clarify** · asked_slot: `{asked_slot}` · nlu_source: `{nlu_source}`"
-            )
+            with st.expander("Developer details", expanded=False):
+                nlu_tab, audit_tab = st.tabs(["NLU JSON", "Audit Trace"])
 
-            with st.expander("Show turn NLU JSON"):
-                st.code(json.dumps(nlu_turn, indent=2), language="json")
+                with nlu_tab:
+                    st.code(json.dumps(nlu_turn, indent=2), language="json")
 
-            with st.expander("Show dialog audit"):
-                st.code(json.dumps(result.get("audit_trace", {}), indent=2), language="json")
+                with audit_tab:
+                    st.code(json.dumps(result.get("audit_trace", {}), indent=2), language="json")
 
             continue
 
         action = result["decision"]["action"]
         nlu_source = result["nlu"]["nlu_source"]
         conf = result["decision"]["confidence"]
-
-        st.caption(
-            f"mode: **final** · action: **{action}** · confidence: **{conf:.2f}** · nlu_source: `{nlu_source}`"
-        )
 
         interaction_id = result.get("interaction_id")
         if not interaction_id:
@@ -920,16 +934,17 @@ for i, msg in enumerate(st.session_state.chat):
                 st.toast("Feedback saved (👎)")
                 st.rerun()
 
-        rag_tab, nlu_tab, audit_tab = st.tabs(["RAG", "NLU JSON", "Audit Trace"])
+        with st.expander("Developer details", expanded=False):
+            rag_tab, nlu_tab, audit_tab = st.tabs(["RAG", "NLU JSON", "Audit Trace"])
 
-        with rag_tab:
-            _render_rag_tab(result)
+            with rag_tab:
+                _render_rag_tab(result)
 
-        with nlu_tab:
-            st.code(json.dumps(result["nlu"], indent=2), language="json")
+            with nlu_tab:
+                st.code(json.dumps(result["nlu"], indent=2), language="json")
 
-        with audit_tab:
-            st.code(json.dumps(result["audit_trace"], indent=2), language="json")
+            with audit_tab:
+                st.code(json.dumps(result["audit_trace"], indent=2), language="json")
 
 st.divider()
 

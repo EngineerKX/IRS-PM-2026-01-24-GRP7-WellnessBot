@@ -25,8 +25,8 @@ if previous_page is not None and previous_page != CURRENT_PAGE:
 
 st.session_state.active_page = CURRENT_PAGE
 
-st.set_page_config(page_title="Knowledge Loop", layout="wide")
-st.title("Knowledge Loop")
+st.set_page_config(page_title="Feedback Records", layout="wide")
+st.title("Feedback Records")
 st.caption("Offline mining for interaction logs + feedback logs")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

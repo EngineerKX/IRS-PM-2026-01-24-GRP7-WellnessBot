@@ -26,13 +26,15 @@ Do not add any introductory summary sentence before the first section.
 Do not restate clinical rationale such as "Mild symptoms noted".
 
 How To Perform grounding rule:
-- Use ONLY the exact strings provided in how_to_perform.
-- Do NOT paraphrase, summarize, or add new procedural details.
-- Include at most one line in How To Perform.
+- Rephrase the content from how_to_perform into clear, natural patient-friendly language.
+- Do NOT add new steps, repetitions, or procedural details that are not in the source.
+- Do NOT omit or summarise any dosage, repetition, or set information present in the source (e.g. "1 set of 10 reps", "increase to 3 sets of 15 reps"). These must appear in full.
 - If how_to_perform is empty, omit the How To Perform section.
 
-For each References bullet, include the citation at the end in this format:
-(SOURCE_ID: SOURCE_LINK)
+For each References bullet:
+- Use the source_id and source_link from evidence_rows ONLY.
+- Do NOT include the evidence text in the References section.
+- Format each bullet as: (SOURCE_ID: SOURCE_LINK)
 """.strip()
 
 
@@ -136,9 +138,9 @@ def build_final_response_messages(
         "- Start directly with the first available section. Do not add any lead-in sentence before Self Care.\n"
         "- Use the exercise_name exactly as provided.\n"
         "- Do not generate a Safety Note or Why This Is Appropriate section.\n"
-        "- In How To Perform, copy exactly one item from how_to_perform as provided.\n"
+        "- In How To Perform, rephrase the content from how_to_perform into clear, patient-friendly language. Preserve all repetition and set counts exactly as stated (e.g. '1 set of 10 reps', '3 sets of 15 reps'). Do not omit any dosage information.\n"
         "- Do not mention chunk_id in the patient-facing prose unless explicitly asked.\n"
-        "- Keep citations attached to each References bullet using the provided source_id and source_link.\n"
+        "- In References, each bullet must contain ONLY the source_id and source_link. Do not include the evidence text in References.\n"
         "- Label the exercise section 'Recommended exercise', the evidence section 'References', and the self-care section 'Self Care'.\n"
     )
 
@@ -166,9 +168,7 @@ def validate_final_response_text(text: str, payload: Dict[str, Any]) -> List[str
         if hallucinated_section in normalized_text.lower():
             errors.append(f"Final response contains removed section: {hallucinated_section}.")
 
-    for line in expected_how_to_perform:
-        if line.lower() not in normalized_text.lower():
-            errors.append("Final response How To Perform is not fully grounded in retrieved evidence.")
-            break
+    if expected_how_to_perform and "how to perform" not in normalized_text.lower():
+        errors.append("Final response is missing the How To Perform section.")
 
     return errors

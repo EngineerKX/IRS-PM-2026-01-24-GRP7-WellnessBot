@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
 
 
-MODEL = os.getenv("OPENAI_FINAL_RESPONSE_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+MODEL = os.getenv("OPENAI_FINAL_RESPONSE_MODEL", os.getenv("OPENAI_MODEL", "gpt-5.4-mini"))
 
 
 def _env_openai_client() -> Any:
@@ -41,7 +41,7 @@ def generate_final_response_text(
 
     resp = client.chat.completions.create(
         model=MODEL,
-        temperature=0.2,
+        temperature=0.3,
         messages=messages,
         timeout=timeout_s,
     )
