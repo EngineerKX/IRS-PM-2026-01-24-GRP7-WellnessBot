@@ -12,7 +12,7 @@ from wellnessbot.kg.loader import (
     SelfCareAction,
 )
 
-_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+_DATA_DIR = Path(__file__).resolve().parents[2] / "Miscellaneous"
 _PROTOCOLS: Dict[str, Protocol] = load_protocols(_DATA_DIR)
 
 _SURGERY_TO_PROTOCOL = {p.surgery_type: pid for pid, p in _PROTOCOLS.items()}

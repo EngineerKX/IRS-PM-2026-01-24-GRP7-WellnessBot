@@ -40,4 +40,4 @@ if (-not $env:MOCK_NLU) { $env:MOCK_NLU = "1" }
 # $env:HTTP_PROXY="http://proxy:port"
 # $env:HTTPS_PROXY="http://proxy:port"
 
-streamlit run .\app\Wellnessbot.py
+streamlit run .\wellnessbot\Wellnessbot.py

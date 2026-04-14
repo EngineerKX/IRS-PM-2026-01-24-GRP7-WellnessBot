@@ -26,9 +26,9 @@ class ChunkDocument:
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_DATA_DIR = _REPO_ROOT / "data"
+_DATA_DIR = _REPO_ROOT / "Miscellaneous"
 _CHUNK_DB_PATH = _REPO_ROOT / "database_v2_csv.json"
-_VERSIONED_CHUNK_DB_PATH = _REPO_ROOT / "database_v2_csv_version.json"
+_VERSIONED_CHUNK_DB_PATH = _REPO_ROOT / "Miscellaneous" / "database_v2_csv_version.json"
 
 
 def _safe_str(value: Any) -> str:

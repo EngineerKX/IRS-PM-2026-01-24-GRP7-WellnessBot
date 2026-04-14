@@ -22,7 +22,7 @@ def make_interaction_id(user_text: str, audit_ts: str) -> str:
 # ------------------------------------------------------------
 
 def _default_logs_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "logs"
+    return Path(__file__).resolve().parents[1] / "logs"
 
 
 def _safe_filename(name: str) -> str:

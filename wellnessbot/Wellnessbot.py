@@ -373,19 +373,38 @@ def _build_deterministic_assistant_text(result: dict) -> str:
 
     if mode == "clarify":
         return result.get("question", "I need a bit more information.")
+    
+    action = result["decision"]["action"]
 
     rules = result["audit_trace"].get("rules_fired", [])
+    top_rule = next((r for r in rules if r.get("action") == action), None)
+    if top_rule is None and rules:
+        top_rule = rules[0]
+
+    primary_rationale = top_rule.get("rationale") if top_rule else "Decision generated."
     extra_lines = []
     for r in rules:
+        if r is top_rule:
+            continue
+
         rid = r.get("rule_id", "")
         rationale = (r.get("rationale") or "").strip()
         if not rationale:
             continue
 
         if rid.startswith("R_SELFCARE_"):
-            extra_lines.append(rationale)
+            extra_lines.append(f"**Supportive care:** {rationale}")
 
-    extra_lines = list(dict.fromkeys(extra_lines))
+    extra_block = ""
+    if extra_lines:
+        extra_block = "\n\n" + "\n\n".join(extra_lines)
+
+    rule_ids = result["decision"].get("rule_ids", [])
+    rule_line = f"\n\nRule IDs: {', '.join(rule_ids)}" if rule_ids else ""
+
+    citations = result["decision"].get("citations", [])
+    cite_str = ", ".join(citations[:3]) + (" ..." if len(citations) > 3 else "")
+    cite_line = f"\n\nSources: {cite_str}" if citations else ""
 
     planner = result["audit_trace"].get("planner")
     planner_line = ""
@@ -397,6 +416,7 @@ def _build_deterministic_assistant_text(result: dict) -> str:
                 planner_line = "\n\n**Available options in this phase:**\n- " + "\n- ".join(names)
         else:
             ex_name = planner.get("exercise_name") or planner.get("exercise_id")
+            stop = planner.get("stop_conditions", [])
             selfcare_items = planner.get("selfcare_routine", []) or []
             selfcare_block = ""
             if selfcare_items:
@@ -410,10 +430,12 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             planner_line = selfcare_block
             planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{ex_name}"
             planner_line += how_to_block
+            if stop:
+                planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
             if evidence_block:
                 planner_line += evidence_block
 
-    assistant_text = planner_line.strip() or "Recommendation generated."
+    assistant_text = planner_line.strip() or f"{primary_rationale}{extra_block}{planner_line}"
 
     if _result_should_end_chat(result):
         assistant_text += (

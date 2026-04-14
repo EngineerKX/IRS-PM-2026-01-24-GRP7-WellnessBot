@@ -29,7 +29,7 @@ st.set_page_config(page_title="Feedback Records", layout="wide")
 st.title("Feedback Records")
 st.caption("Offline mining for interaction logs + feedback logs")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INTERACTIONS = PROJECT_ROOT / "logs"
 DEFAULT_FEEDBACK = PROJECT_ROOT / "logs"
 

@@ -453,8 +453,8 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    interactions_source = Path("logs/interactions")
-    feedback_source = Path("logs/feedback")
+    interactions_source = Path("wellnessbot/logs/interactions")
+    feedback_source = Path("wellnessbot/logs/feedback")
 
     results = run_mining(interactions_source, feedback_source)
 
