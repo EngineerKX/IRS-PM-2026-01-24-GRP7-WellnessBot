@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
 
 
-MODEL = os.getenv("OPENAI_FINAL_RESPONSE_MODEL", os.getenv("OPENAI_MODEL", "gpt-5.4-mini"))
+MODEL = os.getenv("OPENAI_FINAL_RESPONSE_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
 
 def _env_openai_client() -> Any:
