@@ -157,7 +157,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
         return RuleResult(
             action=Action.ESCALATE,
             rule_id=f"R_ESCALATE_{policy.redflag_id}",
-            rationale=policy.message or "Red-flag symptoms detected. Escalate to clinician.",
+            rationale=policy.message or "Exercise is not advised at this time. It is important to speak with a clinician before beginning any physical routine.",
             citations=["SRC_RULEBOOK_001#redflag_policy"],
             confidence_delta=-0.6,
         )
@@ -210,25 +210,26 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
     for a in actions:
         care_type = (a.care_type or "").strip().lower()
 
+        freq = (a.frequency_condition or "").replace("_", " ")
         if care_type in {"ice", "ice_elevate"}:
             texts.append(
-                f"ice and elevate for {a.duration_minutes} minutes ({a.frequency_condition})"
+                f"ice and elevate for {a.duration_minutes} minutes ({freq})"
             )
         elif care_type == "warm_hot_towel":
             texts.append(
-                f"warm up with a hot towel for {a.duration_minutes} minutes ({a.frequency_condition})"
+                f"warm up with a hot towel for {a.duration_minutes} minutes ({freq})"
             )
         elif care_type == "warm_walk":
             texts.append(
-                f"warm up by walking for {a.duration_minutes} minutes ({a.frequency_condition})"
+                f"warm up by walking for {a.duration_minutes} minutes ({freq})"
             )
         elif care_type == "warm":
             texts.append(
-                f"warm up for {a.duration_minutes} minutes ({a.frequency_condition})"
+                f"warm up for {a.duration_minutes} minutes ({freq})"
             )
         else:
             texts.append(
-                f"{a.care_type} for {a.duration_minutes} minutes ({a.frequency_condition})"
+                f"{a.care_type} for {a.duration_minutes} minutes ({freq})"
             )
 
     if phase_id == "P1_1":

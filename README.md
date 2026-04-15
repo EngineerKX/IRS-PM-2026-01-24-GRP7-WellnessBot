@@ -156,7 +156,7 @@ Refer to project report at Github Folder: `ProjectReport`
 
 ## SECTION 7 : MISCELLANEOUS
 
-Refer to Github Folder: `Miscellaneous`
+Refer to Github Folder: `data`
 
 ### System Architecture — Pipeline Overview
 

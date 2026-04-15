@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-PROFILE_DIR = Path("Miscellaneous/profiles")
+PROFILE_DIR = Path("data/profiles")
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
 

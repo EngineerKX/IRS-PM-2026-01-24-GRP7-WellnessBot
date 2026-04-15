@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-HISTORY_DIR = Path("Miscellaneous/exercise_history")
+HISTORY_DIR = Path("data/exercise_history")
 HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
 
