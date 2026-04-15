@@ -49,26 +49,33 @@ Refer to appendix **Installation & User Guide** in the project report at Github 
 ### Prerequisites
 
 - Python 3.10+
-- An OpenAI API key (set in `.env`)
+- An OpenAI API key (set in `SystemCode/.env`)
 
-### [ 1 ] Clone the repository
+### [ 1 ] Extract the zip archive
 
+Extract the submitted zip to a location of your choice. Then open a terminal and navigate into the `SystemCode` folder — **all commands below must be run from inside `SystemCode/`**:
+
+```powershell
+# Windows
+cd path\to\WellnessBot_v2\SystemCode
+```
 ```bash
-git clone https://github.com/<your-org>/WellnessBot_v2.git
-cd WellnessBot_v2
+# macOS / Linux
+cd path/to/WellnessBot_v2/SystemCode
 ```
 
 ### [ 2 ] Set up a virtual environment and install dependencies
 
-```bash
-python -m venv .venv
-
+```powershell
 # Windows
+python -m venv .venv
 .venv\Scripts\activate
-
+pip install -r requirements.txt
+```
+```bash
 # macOS / Linux
+python -m venv .venv
 source .venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
@@ -76,45 +83,69 @@ pip install -r requirements.txt
 
 Copy the example file and fill in your OpenAI API key:
 
+```powershell
+# Windows
+Copy-Item .env.example .env
+```
 ```bash
+# macOS / Linux
 cp .env.example .env
-# Edit .env and set OPENAI_API_KEY=sk-...
 ```
 
-To run with the mock NLU (no API key required):
+Open `SystemCode/.env` and set your key:
+```dotenv
+OPENAI_API_KEY=sk-proj-...
+```
 
-```bash
-# In .env or as an environment variable:
+To run without an API key, use Mock Mode instead:
+```dotenv
 MOCK_NLU=1
 ```
 
 ### [ 4 ] Run the Streamlit application
 
-**Windows (PowerShell):**
+**Windows (PowerShell) — from inside `SystemCode/`:**
 ```powershell
 .\run_streamlit.ps1
 ```
 
-**Or directly:**
+If PowerShell blocks script execution, run this once first:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**macOS / Linux — from inside `SystemCode/`:**
 ```bash
-# From the repo root:
-PYTHONPATH=. streamlit run wellnessbot/Wellnessbot.py
+PYTHONPATH=.. streamlit run wellnessbot/Wellnessbot.py
 ```
 
 Open your browser at `http://localhost:8501`
 
 ### [ 5 ] Run the test suite
 
+**Windows — from inside `SystemCode/`:**
+```powershell
+$env:PYTHONPATH = (Get-Item ..).FullName
+$env:MOCK_NLU = "1"
+pytest wellnessbot/tests/ -v
+```
+
+**macOS / Linux — from inside `SystemCode/`:**
 ```bash
-# From the repo root:
-PYTHONPATH=. pytest wellnessbot/tests/ -v
+MOCK_NLU=1 PYTHONPATH=.. pytest wellnessbot/tests/ -v
 ```
 
 ### [ 6 ] Run the log analysis script
 
+**Windows — from inside `SystemCode/`:**
+```powershell
+$env:PYTHONPATH = (Get-Item ..).FullName
+python wellnessbot/scripts/analyze_logs.py
+```
+
+**macOS / Linux — from inside `SystemCode/`:**
 ```bash
-# From the repo root:
-PYTHONPATH=. python wellnessbot/scripts/analyze_logs.py
+PYTHONPATH=.. python wellnessbot/scripts/analyze_logs.py
 ```
 
 ---
@@ -156,7 +187,7 @@ Refer to project report at Github Folder: `ProjectReport`
 
 ## SECTION 7 : MISCELLANEOUS
 
-Refer to Github Folder: `data`
+Refer to Github Folder: `SystemCode/data`
 
 ### System Architecture — Pipeline Overview
 
