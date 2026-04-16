@@ -1,0 +1,52 @@
+[
+  {
+    "timestamp_utc": "2026-04-05T02:46:41.369227+00:00",
+    "exercise_id": "P4_E1",
+    "exercise_name": "Step ups, forwards",
+    "phase_id": "P4",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-13T13:46:18.243432+00:00",
+    "exercise_id": "P3_E1",
+    "exercise_name": "Quadriceps Stretch, Standing",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-13T13:48:47.196071+00:00",
+    "exercise_id": "P3_E2",
+    "exercise_name": "Hamstring Stretch, Supine",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-14T13:22:15.156119+00:00",
+    "exercise_id": "P3_E4",
+    "exercise_name": "Standing hamstring curl",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-14T14:09:52.368054+00:00",
+    "exercise_id": "P3_E3",
+    "exercise_name": "Partial Squat with chair",
+    "phase_id": "P3",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  }
+]
