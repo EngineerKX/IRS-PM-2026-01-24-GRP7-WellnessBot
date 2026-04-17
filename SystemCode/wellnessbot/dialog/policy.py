@@ -64,9 +64,6 @@ def build_symptom_screen_question(conv: ConversationState) -> str:
 def compute_missing_slots(conv: ConversationState) -> List[str]:
     conv.symptom_screen_done = compute_symptom_screen_done(conv)
 
-    if (conv.surgery_type or "unknown") == "unknown":
-        return ["surgery_type"]
-
     if not (conv.surgery_date or "").strip() and conv.weeks_since_event is None:
         return ["surgery_date"]
 

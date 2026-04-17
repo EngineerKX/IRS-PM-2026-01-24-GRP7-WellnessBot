@@ -142,6 +142,7 @@ def build_final_response_messages(
         "- Do not mention chunk_id in the patient-facing prose unless explicitly asked.\n"
         "- In References, each bullet must contain ONLY the source_id and source_link. Do not include the evidence text in References.\n"
         "- Label the exercise section 'Recommended exercise', the evidence section 'References', and the self-care section 'Self Care'.\n"
+        "- Only include the Self Care section if supportive_care is non-empty. If supportive_care is empty or missing, omit the Self Care section entirely — do not output the heading.\n"
     )
 
     return [
