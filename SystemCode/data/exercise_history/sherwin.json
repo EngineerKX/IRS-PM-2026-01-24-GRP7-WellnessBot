@@ -118,5 +118,65 @@
     "pain_score": 0,
     "swelling_score": 0,
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T09:05:27.235622+00:00",
+    "exercise_id": "P4_E6",
+    "exercise_name": "Leg presses",
+    "phase_id": "P4",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T09:05:55.952141+00:00",
+    "exercise_id": "P4_E4",
+    "exercise_name": "Step downs",
+    "phase_id": "P4",
+    "priority": 3,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T09:08:33.965401+00:00",
+    "exercise_id": "P4_E5",
+    "exercise_name": "Single leg squats",
+    "phase_id": "P4",
+    "priority": 3,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T09:52:27.527941+00:00",
+    "exercise_id": "P1_2_E2",
+    "exercise_name": "Knee flexion and extension",
+    "phase_id": "P1_2",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T09:53:49.683140+00:00",
+    "exercise_id": "P1_2_E3",
+    "exercise_name": "Straight leg raises, supine",
+    "phase_id": "P1_2",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T13:49:50.800077+00:00",
+    "exercise_id": "P1_2_E4",
+    "exercise_name": "Hip Abduction",
+    "phase_id": "P1_2",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
   }
 ]

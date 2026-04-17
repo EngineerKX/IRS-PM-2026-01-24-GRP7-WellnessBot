@@ -126,8 +126,25 @@ def get_rule_ids(row: JsonDict) -> List[str]:
 
 
 def get_winning_rule_id(row: JsonDict) -> Optional[str]:
-    rule_ids = get_rule_ids(row)
-    return rule_ids[0] if rule_ids else None
+    rules_fired = row.get("audit_trace", {}).get("rules_fired", []) or []
+    if not rules_fired:
+        rule_ids = get_rule_ids(row)
+        return rule_ids[0] if rule_ids else None
+
+    dominance = {
+        "ESCALATE": 4,
+        "FORBID": 3,
+        "CLARIFY": 2,
+        "RECOMMEND": 1,
+    }
+
+    def sort_key(rule: JsonDict):
+        action = str(rule.get("action") or "RECOMMEND").upper()
+        delta = float(rule.get("confidence_delta") or 0.0)
+        return (dominance.get(action, 0), delta)
+
+    winner = sorted(rules_fired, key=sort_key, reverse=True)[0]
+    return winner.get("rule_id")
 
 
 def get_action(row: JsonDict) -> Optional[str]:
@@ -244,6 +261,108 @@ def mine_rule_disagreement(merged: List[JsonDict]) -> List[JsonDict]:
     return out
 
 
+def mine_rule_combination_summary(merged: List[JsonDict]) -> List[JsonDict]:
+    combo_counter: Counter = Counter()
+    thumbs_down_counter: Counter = Counter()
+    expected_action_counter: Dict[Tuple[str, ...], Counter] = defaultdict(Counter)
+    sample_ids: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
+    sample_comments: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
+
+    for row in merged:
+        rule_ids = tuple(sorted(get_rule_ids(row)))
+        if not rule_ids:
+            continue
+
+        combo_counter[rule_ids] += 1
+
+        iid = row.get("interaction_id")
+        if iid and len(sample_ids[rule_ids]) < 5:
+            sample_ids[rule_ids].append(iid)
+
+        thumb = get_feedback_thumb(row)
+        if thumb == "down":
+            thumbs_down_counter[rule_ids] += 1
+
+        exp = get_feedback_expected_action(row)
+        if exp:
+            expected_action_counter[rule_ids][exp] += 1
+
+        comment = get_feedback_comment(row)
+        if comment and len(sample_comments[rule_ids]) < 5:
+            sample_comments[rule_ids].append(comment)
+
+    out: List[JsonDict] = []
+    for combo, count in combo_counter.items():
+        thumbs_down = thumbs_down_counter[combo]
+        down_rate = thumbs_down / count if count else 0.0
+        out.append(
+            {
+                "rule_combination": list(combo),
+                "count": count,
+                "thumbs_down": thumbs_down,
+                "thumbs_down_rate": round(down_rate, 3),
+                "top_expected_actions": dict(expected_action_counter[combo].most_common(3)),
+                "sample_comments": sample_comments[combo],
+                "sample_interaction_ids": sample_ids[combo],
+            }
+        )
+
+    out.sort(key=lambda x: (-x["thumbs_down_rate"], -x["count"], x["rule_combination"]))
+    return out
+
+
+def mine_rule_participation_summary(rule_combination_summary: List[JsonDict]) -> List[JsonDict]:
+    rule_stats: Dict[str, Dict[str, Any]] = defaultdict(
+        lambda: {
+            "negative_combination_count": 0,
+            "total_combination_count": 0,
+            "sample_combinations": [],
+            "sample_interaction_ids": [],
+        }
+    )
+
+    for item in rule_combination_summary:
+        rules = item["rule_combination"]
+        count = item["count"]
+        thumbs_down = item["thumbs_down"]
+        is_negative_combo = thumbs_down >= 1 and item["thumbs_down_rate"] >= 0.5
+
+        for rule_id in rules:
+            rule_stats[rule_id]["total_combination_count"] += count
+
+            if is_negative_combo:
+                rule_stats[rule_id]["negative_combination_count"] += 1
+
+                if len(rule_stats[rule_id]["sample_combinations"]) < 5:
+                    rule_stats[rule_id]["sample_combinations"].append(rules)
+
+                for iid in item["sample_interaction_ids"]:
+                    if len(rule_stats[rule_id]["sample_interaction_ids"]) >= 5:
+                        break
+                    if iid not in rule_stats[rule_id]["sample_interaction_ids"]:
+                        rule_stats[rule_id]["sample_interaction_ids"].append(iid)
+
+    out: List[JsonDict] = []
+    for rule_id, stats in rule_stats.items():
+        if stats["negative_combination_count"] == 0:
+            continue
+
+        out.append(
+            {
+                "rule_id": rule_id,
+                "negative_combination_count": stats["negative_combination_count"],
+                "total_combination_count": stats["total_combination_count"],
+                "sample_combinations": stats["sample_combinations"],
+                "sample_interaction_ids": stats["sample_interaction_ids"],
+            }
+        )
+
+    out.sort(
+        key=lambda x: (-x["negative_combination_count"], -x["total_combination_count"], x["rule_id"])
+    )
+    return out
+
+
 def mine_threshold_consistency(merged: List[JsonDict]) -> List[JsonDict]:
     grouped: Dict[Tuple[Optional[str], Optional[int], str], Counter] = defaultdict(Counter)
 
@@ -311,7 +430,15 @@ def mine_red_flag_consistency(merged: List[JsonDict]) -> List[JsonDict]:
 
 
 def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
-    grouped: Dict[Tuple[str, str, str, int], int] = defaultdict(int)
+    grouped: Dict[Tuple[str, str, str, int], Dict[str, Any]] = defaultdict(
+        lambda: {
+            "count": 0,
+            "thumbs_down": 0,
+            "expected_action_counter": Counter(),
+            "sample_interaction_ids": [],
+            "sample_comments": [],
+        }
+    )
 
     for row in merged:
         planner = get_planner(row)
@@ -324,10 +451,32 @@ def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
         if not exercise_id or not exercise_name or not phase_id or priority is None:
             continue
 
-        grouped[(exercise_id, exercise_name, phase_id, priority)] += 1
+        key = (exercise_id, exercise_name, phase_id, priority)
+        bucket = grouped[key]
+        bucket["count"] += 1
+
+        iid = row.get("interaction_id")
+        if iid and len(bucket["sample_interaction_ids"]) < 5:
+            bucket["sample_interaction_ids"].append(iid)
+
+        thumb = get_feedback_thumb(row)
+        if thumb == "down":
+            bucket["thumbs_down"] += 1
+
+        exp = get_feedback_expected_action(row)
+        if exp:
+            bucket["expected_action_counter"][exp] += 1
+
+        comment = get_feedback_comment(row)
+        if comment and len(bucket["sample_comments"]) < 5:
+            bucket["sample_comments"].append(comment)
 
     out: List[JsonDict] = []
-    for (exercise_id, exercise_name, phase_id, priority), count in grouped.items():
+    for (exercise_id, exercise_name, phase_id, priority), bucket in grouped.items():
+        count = bucket["count"]
+        thumbs_down = bucket["thumbs_down"]
+        down_rate = thumbs_down / count if count else 0.0
+
         out.append(
             {
                 "exercise_id": exercise_id,
@@ -335,10 +484,15 @@ def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
                 "phase_id": phase_id,
                 "priority": priority,
                 "count": count,
+                "thumbs_down": thumbs_down,
+                "thumbs_down_rate": round(down_rate, 3),
+                "top_expected_actions": dict(bucket["expected_action_counter"].most_common(3)),
+                "sample_comments": bucket["sample_comments"],
+                "sample_interaction_ids": bucket["sample_interaction_ids"],
             }
         )
 
-    out.sort(key=lambda x: (-x["count"], x["phase_id"], x["priority"], x["exercise_id"]))
+    out.sort(key=lambda x: (-x["thumbs_down_rate"], -x["thumbs_down"], -x["count"], x["phase_id"], x["priority"], x["exercise_id"]))
     return out
 
 
@@ -346,7 +500,6 @@ def mine_planner_behavior_summary(merged: List[JsonDict]) -> JsonDict:
     priority_counter = Counter()
     painkiller_counter = Counter()
     no_plan_count = 0
-    outcome_counter = Counter()
 
     for row in merged:
         planner = get_planner(row)
@@ -363,39 +516,53 @@ def mine_planner_behavior_summary(merged: List[JsonDict]) -> JsonDict:
         if not planner.get("exercise_id"):
             no_plan_count += 1
 
-        notes = row.get("audit_trace", {}).get("notes") or []
-        if any("completed" in str(n).lower() for n in notes):
-            outcome_counter["phase_complete_note"] += 1
-
     return {
         "priority_distribution": dict(priority_counter),
         "recommend_painkiller_distribution": dict(painkiller_counter),
         "no_plan_count": no_plan_count,
-        "planner_outcome_signals": dict(outcome_counter),
     }
 
 
 def generate_candidate_cases(
-    rule_disagreement: List[JsonDict],
+    rule_combination_summary: List[JsonDict],
+    rule_participation_summary: List[JsonDict],
     red_flag_consistency: List[JsonDict],
+    planner_selection_summary: List[JsonDict],
     planner_behavior_summary: JsonDict,
 ) -> List[CandidateCase]:
     cases: List[CandidateCase] = []
 
-    for item in rule_disagreement:
+    for item in rule_combination_summary:
         if item["thumbs_down"] >= 1 and item["thumbs_down_rate"] >= 0.5:
             cases.append(
                 CandidateCase(
-                    case_type="rule_disagreement",
+                    case_type="rule_combination",
                     priority="HIGH",
-                    title=f"Review rule {item['rule_id']}",
+                    title=f"Review rule combination {item['rule_combination']}",
                     description=(
-                        f"Rule {item['rule_id']} has repeated negative feedback. "
+                        f"Rule combination {item['rule_combination']} has repeated negative feedback. "
                         f"Thumbs down: {item['thumbs_down']} / {item['count']}."
                     ),
                     evidence_count=item["count"],
                     sample_interaction_ids=item["sample_interaction_ids"],
-                    proposed_review="Review threshold and scope of this rule against nearby severity states.",
+                    proposed_review="Review this rule set as a unit and confirm whether the co-firing behavior is intended.",
+                )
+            )
+
+    for item in rule_participation_summary:
+        if item["negative_combination_count"] >= 2:
+            cases.append(
+                CandidateCase(
+                    case_type="rule_participation",
+                    priority="HIGH",
+                    title=f"Review repeated negative participation of {item['rule_id']}",
+                    description=(
+                        f"Rule {item['rule_id']} appears in {item['negative_combination_count']} "
+                        f"negative rule combinations."
+                    ),
+                    evidence_count=item["negative_combination_count"],
+                    sample_interaction_ids=item["sample_interaction_ids"],
+                    proposed_review="Check whether this rule is the common contributing factor across different negative combinations.",
                 )
             )
 
@@ -414,6 +581,24 @@ def generate_candidate_cases(
                     evidence_count=sum(item["action_distribution"].values()),
                     sample_interaction_ids=item["sample_interaction_ids"],
                     proposed_review="Check whether mixed actions within the same phase are intentional; if not, refine the phase-specific red-flag policy or rule ordering.",
+                )
+            )
+
+    for item in planner_selection_summary:
+        if item["thumbs_down"] >= 1 and item["thumbs_down_rate"] >= 0.5:
+            cases.append(
+                CandidateCase(
+                    case_type="planner_selection_issue",
+                    priority="HIGH",
+                    title=f"Review planner selection {item['exercise_id']} in {item['phase_id']}",
+                    description=(
+                        f"Planner selection {item['exercise_name']} ({item['exercise_id']}) in phase "
+                        f"{item['phase_id']} received negative feedback. "
+                        f"Thumbs down: {item['thumbs_down']} / {item['count']}."
+                    ),
+                    evidence_count=item["count"],
+                    sample_interaction_ids=item["sample_interaction_ids"],
+                    proposed_review="Check whether planner priority, history handling, or candidate ranking is causing an unsuitable exercise choice.",
                 )
             )
 
@@ -442,14 +627,18 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
 
     basic_stats = summarize_basic_stats(merged, unmatched_feedback)
     rule_disagreement = mine_rule_disagreement(merged)
+    rule_combination_summary = mine_rule_combination_summary(merged)
+    rule_participation_summary = mine_rule_participation_summary(rule_combination_summary)
     threshold_consistency = mine_threshold_consistency(merged)
     red_flag_consistency = mine_red_flag_consistency(merged)
     planner_selection_summary = mine_planner_selection_summary(merged)
     planner_behavior_summary = mine_planner_behavior_summary(merged)
 
     candidate_cases = generate_candidate_cases(
-        rule_disagreement=rule_disagreement,
+        rule_combination_summary=rule_combination_summary,
+        rule_participation_summary=rule_participation_summary,
         red_flag_consistency=red_flag_consistency,
+        planner_selection_summary=planner_selection_summary,
         planner_behavior_summary=planner_behavior_summary,
     )
 
@@ -457,6 +646,8 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
         "basic_stats": basic_stats,
         "unmatched_feedback": unmatched_feedback,
         "rule_disagreement": rule_disagreement,
+        "rule_combination_summary": rule_combination_summary,
+        "rule_participation_summary": rule_participation_summary,
         "threshold_consistency": threshold_consistency,
         "red_flag_consistency": red_flag_consistency,
         "planner_selection_summary": planner_selection_summary,

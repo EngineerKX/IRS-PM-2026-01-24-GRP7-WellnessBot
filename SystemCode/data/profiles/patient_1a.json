@@ -1,8 +1,8 @@
 {
-  "profile_id": "sherwin",
-  "display_name": "",
+  "profile_id": "Patient_1A",
+  "display_name": "Patient_1A",
   "surgery_type": "arthroscopic_knee_surgery",
-  "surgery_date": "2026-04-01",
+  "surgery_date": "2026-04-10",
   "equipment_available": [
     "chair",
     "resistance_band",
@@ -17,7 +17,6 @@
     "stationary_bicycle",
     "wobble_board",
     "thick_carpet",
-    "foam_block",
-    "camping_mattress"
+    "foam_block"
   ]
 }

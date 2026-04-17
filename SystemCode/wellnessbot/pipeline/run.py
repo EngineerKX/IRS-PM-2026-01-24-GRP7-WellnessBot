@@ -191,9 +191,36 @@ def run_pipeline(
 
     rr = rule_red_flags_escalate(nlu_full)
     if rr is not None and rr.action == Action.ESCALATE:
+        protocol = get_protocol_for_surgery_type(nlu_full.surgery_type)
+        protocol_id = protocol.protocol_id if protocol else None
+
+        audit_context = {
+            "user_text": user_text,
+            "nlu_source": nlu_full.nlu_source,
+            "surgery_type": nlu_full.surgery_type,
+            "weeks_since_event": nlu_full.weeks_since_event,
+            "requested_exercise_text": nlu_full.requested_exercise_text,
+            "resolved_exercise_id": None,
+            "exercise_name": None,
+            "protocol_id": protocol_id,
+            "phase_id": state.phase_id,
+            "exercise_allowed_phases": None,
+            "equipment_available": conv.equipment_available,
+            "exercise_history_size": len(planner_history),
+            "exercise_blocked": conv.exercise_blocked,
+            "block_reason": conv.block_reason,
+            "pending_followup_slots": conv.pending_followup_slots,
+        }
+
         audit_trace = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "mode": "final",
+            "audit_context": audit_context,
+            "state": {
+                "phase_id": state.phase_id,
+                "risk_flags": state.risk_flags,
+                "missing_fields": state.missing_fields,
+            },
             "notes": ["Early escalation due to red flag before planning."],
         }
 
@@ -218,6 +245,7 @@ def run_pipeline(
                         "confidence_delta": rr.confidence_delta,
                     }
                 ],
+                "planner": None,
             },
             "conv_state": conv.to_dict(),
         }
