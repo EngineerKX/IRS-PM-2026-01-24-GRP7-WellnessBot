@@ -836,12 +836,13 @@ with st.container():
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
-        st.session_state.mock_toggle = st.toggle(
-            "MOCK DATA",
-            value=st.session_state.mock_toggle,
-            help="Disabled. Always off. ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
-            disabled=True or st.session_state.profile_loaded,
-        )
+        if False:
+            st.session_state.mock_toggle = st.toggle(
+                "MOCK DATA",
+                value=st.session_state.mock_toggle,
+                help="Disabled. Always off. ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
+                disabled=True or st.session_state.profile_loaded,
+            )
 
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
