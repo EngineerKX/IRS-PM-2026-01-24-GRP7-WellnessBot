@@ -145,10 +145,7 @@ def build_welcome_message(profile: dict | None = None, display_name: str = "") -
         else:
             phase_line = f"**Current phase:** {phase_id}\n\n"
 
-    if surgery_type in (None, "", "unknown"):
-        slot_name = "surgery_type"
-        question = "What surgery type did you have? (e.g. Arthroscopic knee surgery)"
-    elif not surgery_date:
+    if not surgery_date:
         slot_name = "surgery_date"
         question = (
             "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
@@ -248,8 +245,8 @@ def _sync_core_profile_widgets_from_state() -> None:
     surgery_type = normalize_surgery_type_value(
         conv.get("surgery_type", conv.get("event_type", "unknown"))
     )
-    if surgery_type not in SURGERY_TYPE_OPTIONS:
-        surgery_type = "unknown"
+    if surgery_type not in SURGERY_TYPE_OPTIONS or surgery_type == "unknown":
+        surgery_type = "arthroscopic_knee_surgery"
 
     st.session_state.editable_surgery_type = surgery_type
     st.session_state.editable_surgery_date = conv.get("surgery_date", "")
@@ -610,7 +607,7 @@ if "show_create_profile" not in st.session_state:
     st.session_state.show_create_profile = False
 
 if "editable_surgery_type" not in st.session_state:
-    st.session_state.editable_surgery_type = "unknown"
+    st.session_state.editable_surgery_type = "arthroscopic_knee_surgery"
 
 if "editable_surgery_date" not in st.session_state:
     st.session_state.editable_surgery_date = ""
@@ -658,7 +655,7 @@ if st.session_state.sync_equipment_from_conv:
     _sync_equipment_multiselect_from_state()
     st.session_state.sync_equipment_from_conv = False
 
-st.sidebar.header("Profile Memory")
+st.sidebar.header("Profile")
 
 existing_profiles = list_profiles()
 profile_options = ["-- Select a profile --"] + existing_profiles
@@ -722,7 +719,7 @@ with col_p2:
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = False
                 st.session_state.show_create_profile = False
-                st.session_state.editable_surgery_type = "unknown"
+                st.session_state.editable_surgery_type = "arthroscopic_knee_surgery"
                 st.session_state.editable_surgery_date = ""
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
@@ -794,8 +791,9 @@ st.sidebar.header("Core Profile")
 edited_surgery_type = st.sidebar.selectbox(
     "Surgery type",
     options=SURGERY_TYPE_OPTIONS,
+    index=SURGERY_TYPE_OPTIONS.index("arthroscopic_knee_surgery"),
     key="editable_surgery_type",
-    disabled=not st.session_state.profile_loaded,
+    disabled=True,
     format_func=format_surgery_type,
 )
 
