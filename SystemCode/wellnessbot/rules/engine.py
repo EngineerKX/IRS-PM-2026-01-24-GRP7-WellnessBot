@@ -31,9 +31,9 @@ def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
         if final == Action.ESCALATE:
             return final, fired_non_recommend
 
-        # Soft stop on FORBID / CLARIFY:
+        # Soft stop on FORBID:
         # still allow supportive RECOMMEND rules to append,
-        # but final action remains non-recommend.
+        # but final action remains FORBID.
         for fn in RULES:
             rr = fn(nlu)
             if rr is None:
@@ -50,15 +50,5 @@ def evaluate_rules(nlu: NLUOutput) -> Tuple[Action, List[RuleResult]]:
             continue
         if rr.action == Action.RECOMMEND:
             fired_recommend.append(rr)
-
-    if not fired_recommend:
-        fallback = RuleResult(
-            action=Action.CLARIFY,
-            rule_id="R_CLARIFY_DEFAULT_001",
-            rationale="Insufficient information to make a safe recommendation.",
-            citations=["SRC_RULEBOOK_001#default_clarify"],
-            confidence_delta=-0.2,
-        )
-        return Action.CLARIFY, [fallback]
 
     return Action.RECOMMEND, fired_recommend
