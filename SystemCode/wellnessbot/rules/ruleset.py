@@ -67,7 +67,7 @@ def _match_redflag_policy(nlu: NLUOutput):
 
     if any(
         t in (nlu.red_flag_terms or [])
-        for t in ["excessive bleeding", "wound drainage", "pus", "bleeding"]
+        for t in ["bleeding","excessive_bleeding_or_wound_drainage"]
     ):
         for p in policies:
             if p.symptom == "excessive_bleeding_or_wound_drainage":
@@ -158,7 +158,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
             action=Action.ESCALATE,
             rule_id=f"R_ESCALATE_{policy.redflag_id}",
             rationale=policy.message or "Exercise is not advised at this time. It is important to speak with a clinician before beginning any physical routine.",
-            citations=["SRC_RULEBOOK_001#redflag_policy"],
+            citations=[],
             confidence_delta=-0.6,
         )
 
@@ -173,7 +173,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
                     "Do not proceed with exercise yet. "
                     f"Supportive follow-up required first: {steps_text}."
                 ),
-                citations=["SRC_RULEBOOK_001#supportive_sequence"],
+                citations=[],
                 confidence_delta=-0.3,
             )
 
@@ -184,7 +184,7 @@ def rule_red_flags_escalate(nlu: NLUOutput) -> Optional[RuleResult]:
                 "Mild symptoms noted. Proceed conservatively with supportive follow-up: "
                 f"{steps_text}."
             ),
-            citations=["SRC_RULEBOOK_001#supportive_sequence"],
+            citations=[],
             confidence_delta=+0.02,
         )
 
@@ -245,7 +245,7 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
         action=Action.RECOMMEND,
         rule_id=rule_id,
         rationale=rationale,
-        citations=["SRC_RULEBOOK_001#selfcare_actions"],
+        citations=[],
         confidence_delta=delta,
     )
 
@@ -371,7 +371,7 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
             action=Action.RECOMMEND,
             rule_id="R_RECOMMEND_PHASE_001",
             rationale="Core recovery information is available. Recommend a suitable exercise from the current phase.",
-            citations=["SRC_RULEBOOK_001#recommend_when_clear"],
+            citations=[],
             confidence_delta=+0.2,
         )
 
@@ -387,7 +387,7 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
         action=Action.RECOMMEND,
         rule_id="R_RECOMMEND_CLEAR_001",
         rationale=f"No blocking constraints detected for '{ex.name}'.",
-        citations=ex.source_refs + ["SRC_RULEBOOK_001#recommend_when_clear"],
+        citations=ex.source_refs + [],
         confidence_delta=+0.2,
     )
 
@@ -407,14 +407,38 @@ def rule_clarify_surgery_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]
 
 
 RULES = [
+    # --- ACTIVE RULES ---
     rule_red_flags_escalate,
-    rule_missing_weeks,
-    rule_unknown_exercise_clarify,
-    rule_phase_forbid,
-    rule_pain_gate,
-    rule_swelling_gate,
-    rule_weight_bearing_gate,
     rule_selfcare_guidance,
     rule_recommend_if_all_clear,
-    rule_clarify_surgery_type_for_loaded,
+
+    # --- DISABLED RULES (DEPRECATED / OUT OF CURRENT INTERACTION SCOPE) ---
+
+    # rule_missing_weeks,
+    # Reason: Responsibility moved to dialog manager (slot filling + next_question_for_missing)
+    # Impact: Missing critical recovery fields are now handled earlier, instead of producing late-stage CLARIFY in the rule engine
+
+    # rule_unknown_exercise_clarify,
+    # Reason: Deprecated — user-specified exercise validation is no longer part of the current interaction design
+    # Impact: The rule engine no longer generates CLARIFY decisions for unrecognized exercise requests
+
+    # rule_phase_forbid,
+    # Reason: Deprecated — phase-based exercise forbidding depended on explicit user exercise requests, which are no longer supported
+    # Impact: The rule engine no longer performs FORBID checks on user-requested exercises
+
+    # rule_pain_gate,
+    # Reason: Deprecated — exercise-specific pain threshold checking depended on explicit user exercise requests, which are no longer supported
+    # Impact: Pain is no longer evaluated against a user-requested exercise threshold in the rule engine
+
+    # rule_swelling_gate,
+    # Reason: Deprecated — exercise-specific swelling compatibility checking depended on explicit user exercise requests, which are no longer supported
+    # Impact: Swelling is no longer checked against exercise-level allowance rules for user-requested exercises
+
+    # rule_weight_bearing_gate,
+    # Reason: Deprecated — exercise-specific weight-bearing compatibility checking depended on explicit user exercise requests, which are no longer supported
+    # Impact: The rule engine no longer performs exercise-level weight-bearing FORBID checks on user-requested exercises
+
+    # rule_clarify_surgery_type_for_loaded,
+    # Reason: Deprecated — this rule existed only for safety checking of user-requested loaded exercises, which are no longer part of the interaction flow
+    # Impact: The rule engine no longer asks for surgery type specifically to validate loaded exercise requests
 ]

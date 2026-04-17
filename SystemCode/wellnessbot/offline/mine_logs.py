@@ -158,15 +158,8 @@ def get_user_text(row: JsonDict) -> str:
     return str(row.get("user_text") or "")
 
 
-def get_numeric_signature(row: JsonDict) -> Tuple[str, Optional[int], str, Optional[str], Optional[str]]:
-    nlu = get_nlu(row)
-    return (
-        get_user_text(row),
-        nlu.get("pain_score"),
-        str(nlu.get("swelling_score") if nlu.get("swelling_score") is not None else "unknown"),
-        get_action(row),
-        get_winning_rule_id(row),
-    )
+def get_planner(row: JsonDict) -> JsonDict:
+    return row.get("audit_trace", {}).get("planner") or {}
 
 
 def summarize_basic_stats(merged: List[JsonDict], unmatched_feedback: List[JsonDict]) -> JsonDict:
@@ -251,58 +244,6 @@ def mine_rule_disagreement(merged: List[JsonDict]) -> List[JsonDict]:
     return out
 
 
-def mine_numeric_ambiguity(merged: List[JsonDict]) -> List[JsonDict]:
-    grouped: Dict[Tuple[str, Optional[str]], List[JsonDict]] = defaultdict(list)
-
-    tracked_inputs = {
-        "1", "2", "3", "none",
-        "pain 1", "pain 2", "pain 3",
-        "swelling 1", "swelling 2", "swelling 3",
-    }
-
-    for row in merged:
-        user_text = get_user_text(row).strip().lower()
-        if user_text not in tracked_inputs:
-            continue
-        grouped[(user_text, get_phase_id(row))].append(row)
-
-    findings: List[JsonDict] = []
-
-    for (user_text, phase_id), rows in grouped.items():
-        signatures = Counter()
-        sample_ids: List[str] = []
-
-        for row in rows:
-            signatures[get_numeric_signature(row)] += 1
-            iid = row.get("interaction_id")
-            if iid and len(sample_ids) < 5:
-                sample_ids.append(iid)
-
-        if len(signatures) > 1:
-            findings.append(
-                {
-                    "user_text": user_text,
-                    "phase_id": phase_id,
-                    "variant_count": len(signatures),
-                    "variants": [
-                        {
-                            "user_text": sig[0],
-                            "pain_score": sig[1],
-                            "swelling_score": sig[2],
-                            "action": sig[3],
-                            "winning_rule_id": sig[4],
-                            "count": count,
-                        }
-                        for sig, count in signatures.items()
-                    ],
-                    "sample_interaction_ids": sample_ids,
-                }
-            )
-
-    findings.sort(key=lambda x: (-x["variant_count"], x["user_text"]))
-    return findings
-
-
 def mine_threshold_consistency(merged: List[JsonDict]) -> List[JsonDict]:
     grouped: Dict[Tuple[Optional[str], Optional[int], str], Counter] = defaultdict(Counter)
 
@@ -336,8 +277,8 @@ def mine_threshold_consistency(merged: List[JsonDict]) -> List[JsonDict]:
 
 
 def mine_red_flag_consistency(merged: List[JsonDict]) -> List[JsonDict]:
-    grouped: Dict[str, Counter] = defaultdict(Counter)
-    sample_ids: Dict[str, List[str]] = defaultdict(list)
+    grouped: Dict[Tuple[str, Optional[str]], Counter] = defaultdict(Counter)
+    sample_ids: Dict[Tuple[str, Optional[str]], List[str]] = defaultdict(list)
 
     for row in merged:
         red_flags = get_red_flags(row)
@@ -346,30 +287,98 @@ def mine_red_flag_consistency(merged: List[JsonDict]) -> List[JsonDict]:
 
         action = get_action(row) or "UNKNOWN"
         iid = row.get("interaction_id")
+        phase_id = get_phase_id(row)
 
         for rf in red_flags:
-            grouped[rf][action] += 1
-            if iid and len(sample_ids[rf]) < 5:
-                sample_ids[rf].append(iid)
+            key = (rf, phase_id)
+            grouped[key][action] += 1
+            if iid and len(sample_ids[key]) < 5:
+                sample_ids[key].append(iid)
 
     out: List[JsonDict] = []
-    for rf, counter in grouped.items():
+    for (rf, phase_id), counter in grouped.items():
         out.append(
             {
                 "red_flag_term": rf,
+                "phase_id": phase_id,
                 "action_distribution": dict(counter),
-                "sample_interaction_ids": sample_ids[rf],
+                "sample_interaction_ids": sample_ids[(rf, phase_id)],
             }
         )
 
-    out.sort(key=lambda x: x["red_flag_term"])
+    out.sort(key=lambda x: (x["red_flag_term"], str(x["phase_id"])))
     return out
+
+
+def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
+    grouped: Dict[Tuple[str, str, str, int], int] = defaultdict(int)
+
+    for row in merged:
+        planner = get_planner(row)
+
+        exercise_id = planner.get("exercise_id")
+        exercise_name = planner.get("exercise_name")
+        phase_id = planner.get("phase_id")
+        priority = planner.get("priority")
+
+        if not exercise_id or not exercise_name or not phase_id or priority is None:
+            continue
+
+        grouped[(exercise_id, exercise_name, phase_id, priority)] += 1
+
+    out: List[JsonDict] = []
+    for (exercise_id, exercise_name, phase_id, priority), count in grouped.items():
+        out.append(
+            {
+                "exercise_id": exercise_id,
+                "exercise_name": exercise_name,
+                "phase_id": phase_id,
+                "priority": priority,
+                "count": count,
+            }
+        )
+
+    out.sort(key=lambda x: (-x["count"], x["phase_id"], x["priority"], x["exercise_id"]))
+    return out
+
+
+def mine_planner_behavior_summary(merged: List[JsonDict]) -> JsonDict:
+    priority_counter = Counter()
+    painkiller_counter = Counter()
+    no_plan_count = 0
+    outcome_counter = Counter()
+
+    for row in merged:
+        planner = get_planner(row)
+
+        if not planner:
+            continue
+
+        priority = planner.get("priority")
+        if priority is not None:
+            priority_counter[str(priority)] += 1
+
+        painkiller_counter[str(bool(planner.get("recommend_painkiller", False)))] += 1
+
+        if not planner.get("exercise_id"):
+            no_plan_count += 1
+
+        notes = row.get("audit_trace", {}).get("notes") or []
+        if any("completed" in str(n).lower() for n in notes):
+            outcome_counter["phase_complete_note"] += 1
+
+    return {
+        "priority_distribution": dict(priority_counter),
+        "recommend_painkiller_distribution": dict(painkiller_counter),
+        "no_plan_count": no_plan_count,
+        "planner_outcome_signals": dict(outcome_counter),
+    }
 
 
 def generate_candidate_cases(
     rule_disagreement: List[JsonDict],
-    numeric_ambiguity: List[JsonDict],
     red_flag_consistency: List[JsonDict],
+    planner_behavior_summary: JsonDict,
 ) -> List[CandidateCase]:
     cases: List[CandidateCase] = []
 
@@ -390,36 +399,37 @@ def generate_candidate_cases(
                 )
             )
 
-    for item in numeric_ambiguity:
-        cases.append(
-            CandidateCase(
-                case_type="numeric_ambiguity",
-                priority="HIGH",
-                title=f"Ambiguous numeric input '{item['user_text']}'",
-                description=(
-                    f"Same raw input maps to {item['variant_count']} parsed/action variants "
-                    f"in phase {item['phase_id']}."
-                ),
-                evidence_count=item["variant_count"],
-                sample_interaction_ids=item["sample_interaction_ids"],
-                proposed_review="Constrain UI or log asked_slot to stabilize interpretation.",
-            )
-        )
-
     for item in red_flag_consistency:
         actions = set(item["action_distribution"].keys())
-        if "ESCALATE" not in actions or len(actions) > 1:
+        if len(actions) > 1:
             cases.append(
                 CandidateCase(
                     case_type="red_flag_consistency",
                     priority="HIGH",
-                    title=f"Review red-flag handling for '{item['red_flag_term']}'",
-                    description=f"Red flag '{item['red_flag_term']}' maps to actions {dict(item['action_distribution'])}.",
+                    title=f"Review red-flag handling for '{item['red_flag_term']}' in {item['phase_id']}",
+                    description=(
+                        f"Red flag '{item['red_flag_term']}' in phase {item['phase_id']} "
+                        f"maps to actions {dict(item['action_distribution'])}."
+                    ),
                     evidence_count=sum(item["action_distribution"].values()),
                     sample_interaction_ids=item["sample_interaction_ids"],
-                    proposed_review="Confirm whether this red flag should always escalate and fix policy ordering if needed.",
+                    proposed_review="Check whether mixed actions within the same phase are intentional; if not, refine the phase-specific red-flag policy or rule ordering.",
                 )
             )
+
+    no_plan_count = planner_behavior_summary.get("no_plan_count", 0)
+    if no_plan_count > 0:
+        cases.append(
+            CandidateCase(
+                case_type="planner_no_plan",
+                priority="MEDIUM",
+                title="Review planner no-plan outcomes",
+                description=f"Planner returned no exercise selection in {no_plan_count} interaction(s).",
+                evidence_count=no_plan_count,
+                sample_interaction_ids=[],
+                proposed_review="Check whether exercise pool exhaustion, history progression, or phase completion handling is behaving as intended.",
+            )
+        )
 
     return cases
 
@@ -432,29 +442,32 @@ def run_mining(interactions_path: Path, feedback_path: Path) -> Dict[str, Any]:
 
     basic_stats = summarize_basic_stats(merged, unmatched_feedback)
     rule_disagreement = mine_rule_disagreement(merged)
-    numeric_ambiguity = mine_numeric_ambiguity(merged)
     threshold_consistency = mine_threshold_consistency(merged)
     red_flag_consistency = mine_red_flag_consistency(merged)
+    planner_selection_summary = mine_planner_selection_summary(merged)
+    planner_behavior_summary = mine_planner_behavior_summary(merged)
+
     candidate_cases = generate_candidate_cases(
         rule_disagreement=rule_disagreement,
-        numeric_ambiguity=numeric_ambiguity,
         red_flag_consistency=red_flag_consistency,
+        planner_behavior_summary=planner_behavior_summary,
     )
 
     return {
         "basic_stats": basic_stats,
         "unmatched_feedback": unmatched_feedback,
         "rule_disagreement": rule_disagreement,
-        "numeric_ambiguity": numeric_ambiguity,
         "threshold_consistency": threshold_consistency,
         "red_flag_consistency": red_flag_consistency,
+        "planner_selection_summary": planner_selection_summary,
+        "planner_behavior_summary": planner_behavior_summary,
         "candidate_cases": [asdict(c) for c in candidate_cases],
     }
 
 
 if __name__ == "__main__":
-    interactions_source = Path("SystemCode/wellnessbot/logs/interactions")
-    feedback_source = Path("SystemCode/wellnessbot/logs/feedback")
+    interactions_source = Path("SystemCode/logs/interactions")
+    feedback_source = Path("SystemCode/logs/feedback")
 
     results = run_mining(interactions_source, feedback_source)
 

@@ -8,5 +8,115 @@
     "pain_score": 0,
     "swelling_score": 0,
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T05:57:03.187150+00:00",
+    "exercise_id": "P3_E2",
+    "exercise_name": "Hamstring Stretch, Supine",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T06:18:23.018836+00:00",
+    "exercise_id": "P3_E4",
+    "exercise_name": "Standing hamstring curl",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:22:42.383436+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": "P1_1",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:31:29.218064+00:00",
+    "exercise_id": "P1_1_E2",
+    "exercise_name": "Heel slides",
+    "phase_id": "P1_1",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:40:54.927097+00:00",
+    "exercise_id": "P1_2_E1",
+    "exercise_name": "Terminal Knee Extension, Supine",
+    "phase_id": "P1_2",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:42:22.030762+00:00",
+    "exercise_id": "P1_1_E2",
+    "exercise_name": "Heel slides",
+    "phase_id": "P2",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 1,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:44:15.857595+00:00",
+    "exercise_id": "P3_E3",
+    "exercise_name": "Partial Squat with chair",
+    "phase_id": "P3",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:45:53.683837+00:00",
+    "exercise_id": "P3_E5",
+    "exercise_name": "Hip abduction, standing",
+    "phase_id": "P3",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T07:46:18.909057+00:00",
+    "exercise_id": "P4_E1",
+    "exercise_name": "Step ups, forwards",
+    "phase_id": "P4",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T08:23:35.486301+00:00",
+    "exercise_id": "P4_E2",
+    "exercise_name": "Step-ups, Lateral",
+    "phase_id": "P4",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T08:24:23.653755+00:00",
+    "exercise_id": "P4_E3",
+    "exercise_name": "Lunges",
+    "phase_id": "P4",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
   }
 ]
