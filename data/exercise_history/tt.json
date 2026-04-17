@@ -7,5 +7,14 @@
     "pain_score": 0,
     "swelling_score": 0,
     "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-15T10:09:17.401283+00:00",
+    "exercise_id": "P1_2_E4",
+    "exercise_name": "Hip Abduction",
+    "phase_id": null,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
   }
 ]

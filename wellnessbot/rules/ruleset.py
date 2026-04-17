@@ -404,7 +404,7 @@ def rule_clarify_surgery_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]
         )
     return None
 
-
+'''
 RULES = [
     rule_red_flags_escalate,
     rule_missing_weeks,
@@ -416,4 +416,11 @@ RULES = [
     rule_selfcare_guidance,
     rule_recommend_if_all_clear,
     rule_clarify_surgery_type_for_loaded,
+]
+'''
+
+RULES = [
+    rule_red_flags_escalate,
+    rule_selfcare_guidance,
+    rule_recommend_if_all_clear,
 ]

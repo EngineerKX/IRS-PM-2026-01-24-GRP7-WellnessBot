@@ -8,7 +8,7 @@ from wellnessbot.kg.reasoning_viz import (
 nlu = NLUOutput(
     weeks_since_event=1.86,
     surgery_type="arthroscopic_knee_surgery",
-    surgery_date="2026-04-01",
+    surgery_date="2026-01-01",
     requested_exercise_text="",
     pain_score=0,
     swelling_score=0,
