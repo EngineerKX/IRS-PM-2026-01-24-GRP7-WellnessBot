@@ -20,8 +20,8 @@ def _normalize_loaded_profile(profile: Dict) -> Dict:
     - Fall back to legacy event_type
     - Remove legacy temporary exercise_history from profile payload
     """
-    if "surgery_type" not in profile:
-        profile["surgery_type"] = profile.get("event_type", "unknown") or "unknown"
+    if profile.get("surgery_type", "unknown") in ("", "unknown", None):
+        profile["surgery_type"] = profile.get("event_type", "arthroscopic_knee_surgery") or "arthroscopic_knee_surgery"
 
     profile.setdefault("profile_id", "")
     profile.setdefault("display_name", "")
@@ -38,7 +38,7 @@ def default_profile(profile_id: str, display_name: str = "") -> Dict:
     return {
         "profile_id": profile_id,
         "display_name": display_name,
-        "surgery_type": "unknown",
+        "surgery_type": "arthroscopic_knee_surgery",
         "surgery_date": "",
         "equipment_available": [],
     }

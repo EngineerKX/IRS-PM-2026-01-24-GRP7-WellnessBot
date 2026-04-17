@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 @dataclass
 class ConversationState:
     # Core slots
-    surgery_type: str = "unknown"
+    surgery_type: str = "arthroscopic_knee_surgery"
     surgery_date: str = ""
     weeks_since_event: Optional[float] = None
     pain_score: Optional[int] = None
@@ -66,7 +66,7 @@ class ConversationState:
             return ConversationState()
 
         return ConversationState(
-            surgery_type=d.get("surgery_type", d.get("event_type", "unknown")),
+            surgery_type=d.get("surgery_type", d.get("event_type", "arthroscopic_knee_surgery")) or "arthroscopic_knee_surgery",
             surgery_date=d.get("surgery_date", "") or "",
             weeks_since_event=d.get("weeks_since_event"),
             pain_score=d.get("pain_score"),

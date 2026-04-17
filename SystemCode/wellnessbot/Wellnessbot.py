@@ -145,10 +145,7 @@ def build_welcome_message(profile: dict | None = None, display_name: str = "") -
         else:
             phase_line = f"**Current phase:** {phase_id}\n\n"
 
-    if surgery_type in (None, "", "unknown"):
-        slot_name = "surgery_type"
-        question = "What surgery type did you have? (e.g. Arthroscopic knee surgery)"
-    elif not surgery_date:
+    if not surgery_date:
         slot_name = "surgery_date"
         question = (
             "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
@@ -248,8 +245,8 @@ def _sync_core_profile_widgets_from_state() -> None:
     surgery_type = normalize_surgery_type_value(
         conv.get("surgery_type", conv.get("event_type", "unknown"))
     )
-    if surgery_type not in SURGERY_TYPE_OPTIONS:
-        surgery_type = "unknown"
+    if surgery_type not in SURGERY_TYPE_OPTIONS or surgery_type == "unknown":
+        surgery_type = "arthroscopic_knee_surgery"
 
     st.session_state.editable_surgery_type = surgery_type
     st.session_state.editable_surgery_date = conv.get("surgery_date", "")
@@ -428,7 +425,8 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             how_to_block = _build_how_to_perform_text(result)
 
             planner_line = selfcare_block
-            planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{ex_name}"
+            display_name = ex_name or "\nAll exercises in the current phase have been completed. Please consider choosing more tools for us to recommend more exercises to you."
+            planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{display_name}"
             planner_line += how_to_block
             if stop:
                 planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
@@ -462,6 +460,8 @@ def _normalise_llm_headers(text: str) -> str:
     import re
     for pattern, replacement in _HEADER_REPLACEMENTS:
         text = re.sub(pattern, replacement, text)
+    # Remove a SELF CARE header that has no content before the next section
+    text = re.sub(r"\*\*<u>SELF CARE</u>\*\*\s*\n+(\*\*<u>)", r"\1", text)
     return text
 
 
@@ -610,7 +610,7 @@ if "show_create_profile" not in st.session_state:
     st.session_state.show_create_profile = False
 
 if "editable_surgery_type" not in st.session_state:
-    st.session_state.editable_surgery_type = "unknown"
+    st.session_state.editable_surgery_type = "arthroscopic_knee_surgery"
 
 if "editable_surgery_date" not in st.session_state:
     st.session_state.editable_surgery_date = ""
@@ -658,7 +658,7 @@ if st.session_state.sync_equipment_from_conv:
     _sync_equipment_multiselect_from_state()
     st.session_state.sync_equipment_from_conv = False
 
-st.sidebar.header("Profile Memory")
+st.sidebar.header("Profile")
 
 existing_profiles = list_profiles()
 profile_options = ["-- Select a profile --"] + existing_profiles
@@ -722,7 +722,7 @@ with col_p2:
                 st.session_state.chat_ended = False
                 st.session_state.profile_loaded = False
                 st.session_state.show_create_profile = False
-                st.session_state.editable_surgery_type = "unknown"
+                st.session_state.editable_surgery_type = "arthroscopic_knee_surgery"
                 st.session_state.editable_surgery_date = ""
                 st.session_state.pending_user_text = None
                 st.session_state.processing_turn = False
@@ -794,8 +794,9 @@ st.sidebar.header("Core Profile")
 edited_surgery_type = st.sidebar.selectbox(
     "Surgery type",
     options=SURGERY_TYPE_OPTIONS,
+    index=SURGERY_TYPE_OPTIONS.index("arthroscopic_knee_surgery"),
     key="editable_surgery_type",
-    disabled=not st.session_state.profile_loaded,
+    disabled=True,
     format_func=format_surgery_type,
 )
 
@@ -835,12 +836,13 @@ with st.container():
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
-        st.session_state.mock_toggle = st.toggle(
-            "MOCK DATA",
-            value=st.session_state.mock_toggle,
-            help="Disabled. Always off. ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
-            disabled=True or st.session_state.profile_loaded,
-        )
+        if False:
+            st.session_state.mock_toggle = st.toggle(
+                "MOCK DATA",
+                value=st.session_state.mock_toggle,
+                help="Disabled. Always off. ON = deterministic mock. OFF = try OpenAI then fallback to mock on error.",
+                disabled=True or st.session_state.profile_loaded,
+            )
 
     with col2:
         if st.button("End conversation / Restart", disabled=not st.session_state.profile_loaded):
