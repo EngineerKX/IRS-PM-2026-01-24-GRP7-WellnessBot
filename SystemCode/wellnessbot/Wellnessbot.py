@@ -425,7 +425,8 @@ def _build_deterministic_assistant_text(result: dict) -> str:
             how_to_block = _build_how_to_perform_text(result)
 
             planner_line = selfcare_block
-            planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{ex_name}"
+            display_name = ex_name or "\nAll exercises in the current phase have been completed. Please consider choosing more tools for us to recommend more exercises to you."
+            planner_line += f"\n\n**<u>RECOMMENDED EXERCISE</u>**\n{display_name}"
             planner_line += how_to_block
             if stop:
                 planner_line += "\n\nStop if:\n- " + "\n- ".join(stop)
@@ -459,6 +460,8 @@ def _normalise_llm_headers(text: str) -> str:
     import re
     for pattern, replacement in _HEADER_REPLACEMENTS:
         text = re.sub(pattern, replacement, text)
+    # Remove a SELF CARE header that has no content before the next section
+    text = re.sub(r"\*\*<u>SELF CARE</u>\*\*\s*\n+(\*\*<u>)", r"\1", text)
     return text
 
 
