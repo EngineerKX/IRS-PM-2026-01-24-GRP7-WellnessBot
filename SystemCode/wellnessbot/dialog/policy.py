@@ -67,12 +67,18 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
     if not (conv.surgery_date or "").strip() and conv.weeks_since_event is None:
         return ["surgery_date"]
 
+    phase_id = _current_phase_from_conv(conv)
+
+    # terminal phase shortcut: bypass all further slot collection
+    if phase_id and phase_id >= "P5":
+        conv.pending_followup_slots = []
+        return []
+
     if not conv.symptom_screen_done:
         return ["symptom_screen"]
 
     symptom_flags = set(x.strip().lower() for x in (conv.symptom_flags or []))
     red_flags = set(x.strip().lower() for x in (conv.red_flag_terms or []))
-    phase_id = _current_phase_from_conv(conv)
 
     # Handle pending follow-ups
     if conv.pending_followup_slots:
@@ -107,6 +113,21 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
 
     # NONE → still need severity collection
     if "none" in symptom_flags:
+        missing = []
+
+        if conv.pain_score is None:
+            missing.append("pain_score")
+
+        if conv.swelling_score is None:
+            missing.append("swelling_score")
+
+        conv.pending_followup_slots = missing.copy()
+
+        if missing:
+            return missing
+
+    # Any symptom report (including red-flag mentions like blood) should still collect severity
+    if (symptom_flags - {"none"}) or red_flags:
         missing = []
 
         if conv.pain_score is None:

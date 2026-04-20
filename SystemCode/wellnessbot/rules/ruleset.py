@@ -28,6 +28,29 @@ def _current_phase(nlu: NLUOutput) -> Optional[str]:
     return phase_from_weeks(nlu.weeks_since_event, nlu.surgery_type)
 
 
+def _phase_major_number(phase_id: str | None) -> Optional[int]:
+    if not phase_id:
+        return None
+
+    phase_id = str(phase_id).strip().upper()
+    if not phase_id.startswith("P"):
+        return None
+
+    body = phase_id[1:]
+    major = body.split("_")[0]
+
+    try:
+        return int(major)
+    except ValueError:
+        return None
+
+
+def _is_return_to_sport_phase(nlu: NLUOutput) -> bool:
+    phase_id = _current_phase(nlu)
+    major = _phase_major_number(phase_id)
+    return major is not None and major >= 5
+
+
 def _has_non_recommend_blockers(nlu: NLUOutput) -> bool:
     blockers = [
         rule_red_flags_escalate(nlu),
@@ -67,7 +90,7 @@ def _match_redflag_policy(nlu: NLUOutput):
 
     if any(
         t in (nlu.red_flag_terms or [])
-        for t in ["bleeding","excessive_bleeding_or_wound_drainage"]
+        for t in ["bleeding", "excessive_bleeding_or_wound_drainage"]
     ):
         for p in policies:
             if p.symptom == "excessive_bleeding_or_wound_drainage":
@@ -250,6 +273,25 @@ def rule_selfcare_guidance(nlu: NLUOutput) -> Optional[RuleResult]:
     )
 
 
+def rule_return_to_sport(nlu: NLUOutput) -> Optional[RuleResult]:
+    if nlu.weeks_since_event is None:
+        return None
+
+    if not _is_return_to_sport_phase(nlu):
+        return None
+
+    return RuleResult(
+        action=Action.RECOMMEND,
+        rule_id="R_RETURN_TO_SPORT_001",
+        rationale=(
+            "Congratulations, you are at the return-to-sport stage. "
+            "You are encouraged to go for outdoor sports or sign up for a guided exercise package at a fitness centre."
+        ),
+        citations=[],
+        confidence_delta=+0.3,
+    )
+
+
 def rule_unknown_exercise_clarify(nlu: NLUOutput) -> Optional[RuleResult]:
     if not (nlu.requested_exercise_text or "").strip():
         return None
@@ -363,6 +405,9 @@ def rule_recommend_if_all_clear(nlu: NLUOutput) -> Optional[RuleResult]:
     if nlu.weeks_since_event is None:
         return None
 
+    if _is_return_to_sport_phase(nlu):
+        return None
+
     if _has_non_recommend_blockers(nlu):
         return None
 
@@ -409,6 +454,7 @@ def rule_clarify_surgery_type_for_loaded(nlu: NLUOutput) -> Optional[RuleResult]
 RULES = [
     # --- ACTIVE RULES ---
     rule_red_flags_escalate,
+    rule_return_to_sport,
     rule_selfcare_guidance,
     rule_recommend_if_all_clear,
 

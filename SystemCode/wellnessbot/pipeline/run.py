@@ -290,10 +290,15 @@ def run_pipeline(
     final_action, fired_rules = evaluate_rules(nlu_full)
     selfcare_routine = _extract_selfcare_routine(fired_rules)
 
+    fired_rule_ids = [r.rule_id for r in fired_rules]
+    is_return_to_sport = "R_RETURN_TO_SPORT_001" in fired_rule_ids
+
     planner_out = None
 
     if final_action == Action.RECOMMEND:
-        if state.phase_id:
+        if is_return_to_sport:
+            planner_out = None
+        elif state.phase_id:
             planner_out = plan(
                 nlu_full,
                 state.phase_id,

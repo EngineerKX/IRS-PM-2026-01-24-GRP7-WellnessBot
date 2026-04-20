@@ -148,15 +148,23 @@ def build_welcome_message(profile: dict | None = None, display_name: str = "") -
     if not surgery_date:
         slot_name = "surgery_date"
         question = (
-            "When was your surgery or injury? Please tell me the date (YYYY-MM-DD) "
-            "or how many weeks/days ago."
+            "When was your surgery or injury? Please tell me the date (YYYY-MM-DD)."
         )
+        mode = "clarify"
+    elif phase_id == "P5":
+        slot_name = None
+        question = (
+            "Congratulations, you are at the return-to-sport stage. "
+            "You are encouraged to gradually resume suitable outdoor sports or sign up for a guided exercise programme at a fitness centre."
+        )
+        mode = "clarify"
     else:
         slot_name = "symptom_screen"
         question = (
             "Are you having any symptoms today, such as fever or excessive bleeding? "
             "If none, just say 'none'."
         )
+        mode = "clarify"
 
     return {
         "role": "assistant",
@@ -167,11 +175,11 @@ def build_welcome_message(profile: dict | None = None, display_name: str = "") -
             f"{question}"
         ),
         "result": {
-            "mode": "clarify",
+            "mode": mode,
             "slot_name": slot_name,
             "nlu_turn": {},
             "audit_trace": {
-                "mode": "clarify",
+                "mode": mode,
                 "asked_slot": slot_name,
                 "phase_id": phase_id,
                 "phase_name": phase_name,
@@ -959,7 +967,7 @@ for i, msg in enumerate(st.session_state.chat):
                 st.rerun()
 
         with st.expander("Developer details", expanded=False):
-            rag_tab, nlu_tab, audit_tab = st.tabs(["RAG", "NLU JSON", "Audit Trace"])
+            rag_tab, nlu_tab, audit_tab = st.tabs(["Evidence Ranking (BM25)", "NLU JSON", "Audit Trace"])
 
             with rag_tab:
                 _render_rag_tab(result)
