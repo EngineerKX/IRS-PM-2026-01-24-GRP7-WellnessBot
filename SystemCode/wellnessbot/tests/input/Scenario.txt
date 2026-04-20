@@ -1,0 +1,59 @@
+Scenario 1:
+Date of surgery: 14/4/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 1
+
+Scenario 2:
+Date of surgery: 14/4/2026
+Symptom response: I have a fever today
+Pain score: N/A
+Swelling score: N/A
+
+Scenario 3:
+Date of surgery: 1/4/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 0
+
+Scenario 4:
+Date of surgery: 1/4/2026
+Symptom response: there is some excessive bleeding
+Pain score: N/A
+Swelling score: N/A
+
+Scenario 5:
+Date of surgery: 15/3/2026
+Symptom response: none
+Pain score: 2
+Swelling score: 2
+
+Scenario 6:
+Date of surgery: 15/3/2026
+Symptom response: I feel feverish today
+Pain score: N/A
+Swelling score: N/A
+
+Scenario 7:
+Date of surgery: 15/2/2026
+Symptom response: none
+Pain score: 3
+Swelling score: 1
+
+Scenario 8:
+Date of surgery: 15/2/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 3
+
+Scenario 9:
+Date of surgery: 1/2/2026
+Symptom response: none
+Pain score: 2
+Swelling score: 0
+
+Scenario 10:
+Date of surgery: 1/2/2026
+Symptom response: I am having a fever
+Pain score: N/A
+Swelling score: N/A

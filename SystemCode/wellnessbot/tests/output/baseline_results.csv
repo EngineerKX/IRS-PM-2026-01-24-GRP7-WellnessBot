@@ -1,0 +1,11 @@
+output
+Scenario 1: RECOMMEND
+Scenario 2: ESCALATE
+Scenario 3: RECOMMEND
+Scenario 4: ESCALATE
+Scenario 5: FORBID
+Scenario 6: ESCALATE
+Scenario 7: ESCALATE
+Scenario 8: ESCALATE
+Scenario 9: FORBID
+Scenario 10: ESCALATE
