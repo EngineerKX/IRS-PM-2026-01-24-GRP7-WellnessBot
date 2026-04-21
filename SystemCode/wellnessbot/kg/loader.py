@@ -95,6 +95,7 @@ class Protocol:
     procedure: Dict[str, Any]
     phases: List[Phase]
     exercise_aliases: Dict[str, str]
+    symptom_aliases: Dict[str, List[str]]
     exercises: Dict[str, Exercise]
     sources: Dict[str, str]
     redflag_policies: List[RedFlagPolicy]
@@ -247,6 +248,12 @@ def load_protocols(data_dir: Path) -> Dict[str, Protocol]:
             exercise_aliases={
                 str(k).lower(): str(v)
                 for k, v in (raw.get("exercise_aliases") or {}).items()
+            },
+            symptom_aliases={
+                str(k).strip().lower(): [
+                    str(x).strip().lower() for x in (v or []) if str(x).strip()
+                ]
+                for k, v in (raw.get("symptom_aliases") or {}).items()
             },
             exercises=exercises,
             sources={

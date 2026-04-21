@@ -240,3 +240,36 @@ def get_selfcare_actions(surgery_type: str, phase_id: str) -> List[SelfCareActio
     if not proto:
         return []
     return [a for a in proto.selfcare_actions if a.phase_id == phase_id]
+
+
+def get_symptom_aliases(surgery_type: str) -> Dict[str, List[str]]:
+    proto = get_protocol_for_surgery_type(surgery_type)
+    if not proto:
+        return {}
+    return dict(getattr(proto, "symptom_aliases", {}) or {})
+
+
+def symptom_matches_policy(
+    surgery_type: str,
+    policy_symptom: str,
+    extracted_terms: List[str],
+) -> bool:
+    aliases = get_symptom_aliases(surgery_type)
+
+    normalized_terms = {
+        str(t).strip().lower().replace(" ", "_")
+        for t in (extracted_terms or [])
+        if str(t).strip()
+    }
+
+    allowed_aliases = aliases.get((policy_symptom or "").strip().lower(), [policy_symptom])
+    normalized_allowed = {
+        str(x).strip().lower().replace(" ", "_")
+        for x in (allowed_aliases or [])
+        if str(x).strip()
+    }
+
+    # include canonical policy symptom itself
+    normalized_allowed.add((policy_symptom or "").strip().lower().replace(" ", "_"))
+
+    return bool(normalized_terms & normalized_allowed)

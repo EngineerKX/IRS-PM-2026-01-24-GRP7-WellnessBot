@@ -5,7 +5,11 @@ from typing import List, Optional
 
 from SystemCode.wellnessbot.dialog.state import ConversationState
 from SystemCode.wellnessbot.dialog.questions import QUESTION_BANK
-from SystemCode.wellnessbot.kg.kg import phase_from_weeks
+from SystemCode.wellnessbot.kg.kg import (
+    phase_from_weeks,
+    get_redflag_policies,
+    symptom_matches_policy,
+)
 
 
 def _current_phase_from_conv(conv: ConversationState) -> Optional[str]:
@@ -27,6 +31,55 @@ def _current_phase_from_conv(conv: ConversationState) -> Optional[str]:
         return None
 
     return phase_from_weeks(weeks_since_event, conv.surgery_type)
+
+
+def _matching_redflag_policies(conv: ConversationState, phase_id: str | None):
+    if not phase_id:
+        return []
+
+    red_flags = set(x.strip().lower() for x in (conv.red_flag_terms or []))
+    if not red_flags:
+        return []
+
+    policies = get_redflag_policies(conv.surgery_type, phase_id)
+    if not policies:
+        return []
+
+    matched = []
+    for p in policies:
+        symptom = (p.symptom or "").strip().lower()
+        if symptom_matches_policy(conv.surgery_type, symptom, list(red_flags)):
+            matched.append(p)
+
+    return matched
+
+
+def _should_short_circuit_red_flags(conv: ConversationState, phase_id: str | None) -> bool:
+    matched_policies = _matching_redflag_policies(conv, phase_id)
+    if not matched_policies:
+        return False
+
+    for p in matched_policies:
+        action = (p.action or "").strip().lower()
+        if action == "escalate":
+            return True
+
+    return False
+
+
+def _should_collect_severity_for_red_flags(conv: ConversationState, phase_id: str | None) -> bool:
+    matched_policies = _matching_redflag_policies(conv, phase_id)
+    if not matched_policies:
+        return False
+
+    for p in matched_policies:
+        action = (p.action or "").strip().lower()
+        steps = set(x.strip().lower() for x in (p.action_steps or []))
+
+        if action == "supportive_sequence" and "stop_exercise" in steps:
+            return True
+
+    return False
 
 
 def build_symptom_screen_question(conv: ConversationState) -> str:
@@ -80,6 +133,11 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
     symptom_flags = set(x.strip().lower() for x in (conv.symptom_flags or []))
     red_flags = set(x.strip().lower() for x in (conv.red_flag_terms or []))
 
+    # Short-circuit only when the KG policy for this phase says the red flag escalates
+    if _should_short_circuit_red_flags(conv, phase_id):
+        conv.pending_followup_slots = []
+        return []
+
     # Handle pending follow-ups
     if conv.pending_followup_slots:
         remaining = []
@@ -94,8 +152,8 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
         if remaining:
             return remaining
 
-    # Special case: P1_1 fever
-    if phase_id == "P1_1" and "fever" in red_flags:
+    # KG-driven supportive-sequence cases that still require severity collection
+    if _should_collect_severity_for_red_flags(conv, phase_id):
         missing = []
 
         if conv.pain_score is None:
@@ -105,7 +163,7 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
             missing.append("swelling_score")
 
         conv.exercise_blocked = True
-        conv.block_reason = "P1_1_fever"
+        conv.block_reason = "redflag_supportive_sequence"
         conv.pending_followup_slots = missing.copy()
 
         if missing:
@@ -126,7 +184,7 @@ def compute_missing_slots(conv: ConversationState) -> List[str]:
         if missing:
             return missing
 
-    # Any symptom report (including red-flag mentions like blood) should still collect severity
+    # Any symptom report (including non-escalating red-flag mentions) should still collect severity
     if (symptom_flags - {"none"}) or red_flags:
         missing = []
 

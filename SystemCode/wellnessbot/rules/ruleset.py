@@ -11,8 +11,7 @@ from SystemCode.wellnessbot.kg.kg import (
 )
 from SystemCode.wellnessbot.nlu.schema import NLUOutput
 from SystemCode.wellnessbot.rules.rule_types import Action, RuleResult
-
-
+from SystemCode.wellnessbot.kg.kg import symptom_matches_policy
 # Dominance: ESCALATE > FORBID > CLARIFY > RECOMMEND
 DOMINANCE = {
     Action.ESCALATE: 4,
@@ -73,32 +72,35 @@ def _match_redflag_policy(nlu: NLUOutput):
     policies = get_redflag_policies(nlu.surgery_type, phase_id)
     matches = []
 
+    # --- Pain-based matching ---
     if nlu.pain_score is not None:
         for p in policies:
             if p.symptom == "pain" and str(nlu.pain_score) == str(p.severity):
                 matches.append(p)
 
+    # --- Swelling-based matching ---
     if nlu.swelling_score is not None:
         for p in policies:
             if p.symptom == "swelling" and str(nlu.swelling_score) == str(p.severity):
                 matches.append(p)
 
-    if "fever" in (nlu.red_flag_terms or []):
-        for p in policies:
-            if p.symptom == "fever":
-                matches.append(p)
+    # --- KG-driven red flag matching (CRITICAL FIX) ---
+    red_flag_terms = list(nlu.red_flag_terms or [])
 
-    if any(
-        t in (nlu.red_flag_terms or [])
-        for t in ["bleeding", "excessive_bleeding_or_wound_drainage"]
-    ):
-        for p in policies:
-            if p.symptom == "excessive_bleeding_or_wound_drainage":
-                matches.append(p)
+    for p in policies:
+        symptom = (p.symptom or "").strip().lower()
+
+        # skip already handled numeric symptoms
+        if symptom in {"pain", "swelling"}:
+            continue
+
+        if symptom_matches_policy(nlu.surgery_type, symptom, red_flag_terms):
+            matches.append(p)
 
     if not matches:
         return None
 
+    # --- Ranking ---
     def policy_rank(p):
         if p.action == "escalate":
             return 2

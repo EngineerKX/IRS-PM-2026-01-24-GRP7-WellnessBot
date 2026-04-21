@@ -125,6 +125,23 @@ sources:
   S10: https://hipkneeinfo.org/wp-content/uploads/2025/09/knee-exercises-print-guide.pdf
   S11: https://www.orthowood.com/uploads/2014/01/Knee-Replacement-Rehabilitation.pdf
 
+symptom_aliases:
+  fever:
+    - fever
+
+  excessive_bleeding_or_wound_drainage:
+    - excessive bleeding
+    - wound drainage
+    - excessive_bleeding
+    - wound_drainage
+    - excessive_bleeding_or_wound_drainage
+
+  pain:
+    - pain
+
+  swelling:
+    - swelling
+
 redflag_policies:
   - redflag_id: RF_001
     phase_ids: [P1_1]

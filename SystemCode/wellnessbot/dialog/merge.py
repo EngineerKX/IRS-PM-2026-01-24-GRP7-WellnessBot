@@ -34,25 +34,36 @@ def merge_turn(
     if (nlu_turn.requested_exercise_text or "").strip():
         conv.requested_exercise_text = nlu_turn.requested_exercise_text.strip()
 
-    if getattr(nlu_turn, "red_flag_terms", None):
-        existing = set(conv.red_flag_terms or [])
-        existing.update(x.strip().lower() for x in nlu_turn.red_flag_terms if str(x).strip())
-        conv.red_flag_terms = sorted(existing)
+    # Symptom-screen turns are authoritative.
+    # If user says "none", clear prior symptom/red-flag state.
+    if expected_slot == "symptom_screen":
+        new_flags = set(x.strip().lower() for x in (nlu_turn.symptom_flags or []) if str(x).strip())
+        new_red_flags = set(x.strip().lower() for x in (nlu_turn.red_flag_terms or []) if str(x).strip())
 
-    if getattr(nlu_turn, "symptom_flags", None):
-        existing_flags = set(x.strip().lower() for x in (conv.symptom_flags or []))
-        new_flags = set(x.strip().lower() for x in (nlu_turn.symptom_flags or []))
-
-        # "none" means no additional symptoms in this turn.
-        # It should NOT erase earlier positive symptoms like swelling/pain.
         if new_flags == {"none"}:
-            if not existing_flags:
-                conv.symptom_flags = ["none"]
-            else:
-                conv.symptom_flags = sorted(existing_flags)
+            conv.symptom_flags = ["none"]
+            conv.red_flag_terms = []
         else:
-            merged_flags = (existing_flags | new_flags) - {"none"}
-            conv.symptom_flags = sorted(merged_flags)
+            conv.symptom_flags = sorted(new_flags) if new_flags else []
+            conv.red_flag_terms = sorted(new_red_flags) if new_red_flags else []
+
+    else:
+        # Non-symptom turns should not erase prior symptom-screen result,
+        # but may add new symptom details if explicitly extracted.
+        if getattr(nlu_turn, "red_flag_terms", None):
+            existing = set(x.strip().lower() for x in (conv.red_flag_terms or []))
+            existing.update(x.strip().lower() for x in nlu_turn.red_flag_terms if str(x).strip())
+            conv.red_flag_terms = sorted(existing)
+
+        if getattr(nlu_turn, "symptom_flags", None):
+            existing_flags = set(x.strip().lower() for x in (conv.symptom_flags or []))
+            new_flags = set(x.strip().lower() for x in (nlu_turn.symptom_flags or []))
+
+            if new_flags == {"none"}:
+                conv.symptom_flags = ["none"] if not existing_flags else sorted(existing_flags)
+            else:
+                merged_flags = (existing_flags | new_flags) - {"none"}
+                conv.symptom_flags = sorted(merged_flags)
 
     if getattr(nlu_turn, "negated_terms", None):
         existing_neg = set(x.strip().lower() for x in (conv.negated_terms or []))

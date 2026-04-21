@@ -68,9 +68,20 @@ def _extract_selfcare_routine(fired_rules: List[Any]) -> List[str]:
 
     for r in fired_rules:
         rule_id = getattr(r, "rule_id", "") or ""
+        action = getattr(r, "action", None)
         rationale = (getattr(r, "rationale", "") or "").strip()
 
-        if rule_id.startswith("R_SELFCARE_") and rationale:
+        if not rationale:
+            continue
+
+        # Keep explicit self-care rules
+        if rule_id.startswith("R_SELFCARE_"):
+            out.append(rationale)
+            continue
+
+        # Also keep supportive recommendation rules so items like
+        # "use pain relief as prescribed" are passed into planner/LLM
+        if rule_id.startswith("R_SUPPORTIVE_") and action == Action.RECOMMEND:
             out.append(rationale)
 
     # deduplicate while preserving order
