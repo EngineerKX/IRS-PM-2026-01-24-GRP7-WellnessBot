@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp_utc": "2026-04-21T15:36:50.309894+00:00",
+    "exercise_id": "P2_E1",
+    "exercise_name": "Calf raises",
+    "phase_id": "P2",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-22T16:31:18.786305+00:00",
+    "exercise_id": "P3_E1",
+    "exercise_name": "Quadriceps Stretch, Standing",
+    "phase_id": "P3",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  }
+]

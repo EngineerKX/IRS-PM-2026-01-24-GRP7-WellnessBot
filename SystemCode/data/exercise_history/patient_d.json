@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp_utc": "2026-04-21T15:59:27.892974+00:00",
+    "exercise_id": "P1_2_E3",
+    "exercise_name": "Straight leg raises, supine",
+    "phase_id": "P3",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-22T16:42:55.548628+00:00",
+    "exercise_id": "P4_E3",
+    "exercise_name": "Lunges",
+    "phase_id": "P4",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-22T16:52:49.629448+00:00",
+    "exercise_id": "P1_2_E3",
+    "exercise_name": "Straight leg raises, supine",
+    "phase_id": "P4",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 1,
+    "action": "RECOMMEND"
+  }
+]
