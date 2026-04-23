@@ -9,6 +9,22 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 JsonDict = Dict[str, Any]
 
+# --------------------------------------------
+# PLANNER MINING THRESHOLDS (TUNABLE)
+# --------------------------------------------
+PLANNER_THRESHOLDS = {
+    "HIGH": {
+        "min_count": 5,
+        "min_thumbs_down": 4,
+        "min_rate": 0.5,
+    },
+    "MEDIUM": {
+        "min_count": 3,
+        "min_thumbs_down": 2,
+        "min_rate": 0.0,
+    },
+}
+
 
 @dataclass
 class CandidateCase:
@@ -225,13 +241,12 @@ def mine_rule_disagreement(merged: List[JsonDict]) -> List[JsonDict]:
         bucket = buckets[rule_id]
         bucket["count"] += 1
 
-        iid = row.get("interaction_id")
-        if iid and len(bucket["sample_interaction_ids"]) < 5:
-            bucket["sample_interaction_ids"].append(iid)
-
         thumb = get_feedback_thumb(row)
+        iid = row.get("interaction_id")
         if thumb == "down":
             bucket["thumbs_down"] += 1
+            if iid and iid not in bucket["sample_interaction_ids"] and len(bucket["sample_interaction_ids"]) < 5:
+                bucket["sample_interaction_ids"].append(iid)
 
         exp = get_feedback_expected_action(row)
         if exp:
@@ -275,13 +290,12 @@ def mine_rule_combination_summary(merged: List[JsonDict]) -> List[JsonDict]:
 
         combo_counter[rule_ids] += 1
 
-        iid = row.get("interaction_id")
-        if iid and len(sample_ids[rule_ids]) < 5:
-            sample_ids[rule_ids].append(iid)
-
         thumb = get_feedback_thumb(row)
+        iid = row.get("interaction_id")
         if thumb == "down":
             thumbs_down_counter[rule_ids] += 1
+            if iid and iid not in sample_ids[rule_ids] and len(sample_ids[rule_ids]) < 5:
+                sample_ids[rule_ids].append(iid)
 
         exp = get_feedback_expected_action(row)
         if exp:
@@ -455,13 +469,12 @@ def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
         bucket = grouped[key]
         bucket["count"] += 1
 
-        iid = row.get("interaction_id")
-        if iid and len(bucket["sample_interaction_ids"]) < 5:
-            bucket["sample_interaction_ids"].append(iid)
-
         thumb = get_feedback_thumb(row)
+        iid = row.get("interaction_id")
         if thumb == "down":
             bucket["thumbs_down"] += 1
+            if iid and iid not in bucket["sample_interaction_ids"] and len(bucket["sample_interaction_ids"]) < 5:
+                bucket["sample_interaction_ids"].append(iid)
 
         exp = get_feedback_expected_action(row)
         if exp:
@@ -492,7 +505,16 @@ def mine_planner_selection_summary(merged: List[JsonDict]) -> List[JsonDict]:
             }
         )
 
-    out.sort(key=lambda x: (-x["thumbs_down_rate"], -x["thumbs_down"], -x["count"], x["phase_id"], x["priority"], x["exercise_id"]))
+    out.sort(
+        key=lambda x: (
+            -x["thumbs_down_rate"],
+            -x["thumbs_down"],
+            -x["count"],
+            x["phase_id"],
+            x["priority"],
+            x["exercise_id"],
+        )
+    )
     return out
 
 
@@ -585,22 +607,43 @@ def generate_candidate_cases(
             )
 
     for item in planner_selection_summary:
-        if item["thumbs_down"] >= 1 and item["thumbs_down_rate"] >= 0.5:
-            cases.append(
-                CandidateCase(
-                    case_type="planner_selection_issue",
-                    priority="HIGH",
-                    title=f"Review planner selection {item['exercise_id']} in {item['phase_id']}",
-                    description=(
-                        f"Planner selection {item['exercise_name']} ({item['exercise_id']}) in phase "
-                        f"{item['phase_id']} received negative feedback. "
-                        f"Thumbs down: {item['thumbs_down']} / {item['count']}."
-                    ),
-                    evidence_count=item["count"],
-                    sample_interaction_ids=item["sample_interaction_ids"],
-                    proposed_review="Check whether planner priority, history handling, or candidate ranking is causing an unsuitable exercise choice.",
-                )
+        count = item["count"]
+        thumbs_down = item["thumbs_down"]
+        rate = item["thumbs_down_rate"]
+
+        high_cfg = PLANNER_THRESHOLDS["HIGH"]
+        med_cfg = PLANNER_THRESHOLDS["MEDIUM"]
+
+        if (
+            count >= high_cfg["min_count"]
+            and thumbs_down >= high_cfg["min_thumbs_down"]
+            and rate >= high_cfg["min_rate"]
+        ):
+            priority = "HIGH"
+        elif (
+            count >= med_cfg["min_count"]
+            and thumbs_down >= med_cfg["min_thumbs_down"]
+            and rate >= med_cfg["min_rate"]
+        ):
+            priority = "MEDIUM"
+        else:
+            continue
+
+        cases.append(
+            CandidateCase(
+                case_type="planner_selection_issue",
+                priority=priority,
+                title=f"Review planner selection {item['exercise_id']} in {item['phase_id']}",
+                description=(
+                    f"Planner selection {item['exercise_name']} ({item['exercise_id']}) in phase "
+                    f"{item['phase_id']} received negative feedback. "
+                    f"Thumbs down: {thumbs_down} / {count}."
+                ),
+                evidence_count=count,
+                sample_interaction_ids=item["sample_interaction_ids"],
+                proposed_review="Check whether planner priority, history handling, or candidate ranking is causing an unsuitable exercise choice.",
             )
+        )
 
     no_plan_count = planner_behavior_summary.get("no_plan_count", 0)
     if no_plan_count > 0:

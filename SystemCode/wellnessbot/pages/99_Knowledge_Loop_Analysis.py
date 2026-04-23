@@ -33,6 +33,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INTERACTIONS = PROJECT_ROOT / "logs"
 DEFAULT_FEEDBACK = PROJECT_ROOT / "logs"
 
+
+def _rename_display_columns(df: pd.DataFrame) -> pd.DataFrame:
+    rename_map = {
+        "sample_interaction_ids": "interaction_ids",
+        "sample_comments": "comments",
+    }
+    return df.rename(columns=rename_map)
+
+
 st.subheader("Input files")
 
 col1, col2 = st.columns(2)
@@ -78,6 +87,7 @@ if run_clicked:
         st.subheader("Candidate cases")
         cases_df = pd.DataFrame(results["candidate_cases"])
         if not cases_df.empty:
+            cases_df = _rename_display_columns(cases_df)
             st.dataframe(cases_df, use_container_width=True, hide_index=True)
         else:
             st.info("No candidate cases generated.")
@@ -91,6 +101,7 @@ if run_clicked:
         st.subheader("KG rule mining")
         combo_df = pd.DataFrame(results["rule_combination_summary"])
         if not combo_df.empty:
+            combo_df = _rename_display_columns(combo_df)
             st.dataframe(combo_df, use_container_width=True, hide_index=True)
         else:
             st.info("No combined rule patterns found.")
@@ -101,6 +112,7 @@ if run_clicked:
         st.subheader("Safety consistency")
         redflag_df = pd.DataFrame(results["red_flag_consistency"])
         if not redflag_df.empty:
+            redflag_df = _rename_display_columns(redflag_df)
             st.dataframe(redflag_df, use_container_width=True, hide_index=True)
         else:
             st.info("No red-flag cases found.")
@@ -111,6 +123,7 @@ if run_clicked:
         st.subheader("Planner mining")
         planner_df = pd.DataFrame(results["planner_selection_summary"])
         if not planner_df.empty:
+            planner_df = _rename_display_columns(planner_df)
             st.dataframe(planner_df, use_container_width=True, hide_index=True)
         else:
             st.info("No planner selection data found.")
