@@ -110,6 +110,24 @@ def _unseen_at_priority(
     return unseen
 
 
+def _prev_phase_ids(current_phase_id: str) -> List[str]:
+    """
+    Return the phase(s) immediately before current_phase_id for cross-phase pain downgrade.
+
+    P2 is special: its predecessor is both P1_1 and P1_2 (treated as a single P1 block).
+    All other phases have exactly one predecessor.
+    Returns an empty list if already at P1_1 or P1_2 (no further drop possible).
+    """
+    if current_phase_id == "P2":
+        return ["P1_1", "P1_2"]
+    order = ["P2", "P3", "P4", "P5"]
+    try:
+        idx = order.index(current_phase_id)
+    except ValueError:
+        return []
+    return [order[idx - 1]] if idx > 0 else []
+
+
 def _downgrade_priority(
     current_phase_id: str,
     working_priority: int,
@@ -119,27 +137,25 @@ def _downgrade_priority(
     Given mild pain, determine the downgraded priority/phase target.
 
     Returns a dict with:
-        {"cross_phase": bool, "phase_id": str (only if cross_phase), "priority": int}
+        {"cross_phase": bool, "target_phase_ids": List[str] (only if cross_phase), "priority": int}
 
     Downgrade rules:
     - Priority 2 or 3 → drop one tier within the same phase
-    - Priority 1 in a non-P1 phase → cross-phase drop to P1 (both sub-phases),
-      targeting the highest priority number that exists there
+    - Priority 1 in a non-P1 phase → cross-phase drop to the immediately previous phase,
+      targeting the highest priority number available there.
+      P2 is special: drops to both P1_1 and P1_2 combined.
     - Priority 1 in a P1 phase → already at absolute easiest; no further downgrade
     """
     if working_priority > sorted_priorities[0]:
-        # Drop one tier within the same phase
         idx = sorted_priorities.index(working_priority)
         lower_priority = sorted_priorities[idx - 1]
         return {"cross_phase": False, "priority": lower_priority}
 
-    # Already at the lowest priority tier in the current phase
     if current_phase_id.startswith("P1"):
-        # Already at the absolute easiest — stay here
         return {"cross_phase": False, "priority": sorted_priorities[0]}
-    else:
-        # Cross-phase drop: signal the caller to query P1 and find the highest priority there
-        return {"cross_phase": True}
+
+    target_phase_ids = _prev_phase_ids(current_phase_id)
+    return {"cross_phase": True, "target_phase_ids": target_phase_ids}
 
 
 def _select_exercise(
@@ -197,26 +213,27 @@ def _select_exercise(
         logger.debug("Pain downgrade decision | %s", downgrade)
 
         if downgrade.get("cross_phase"):
-            # Cross-phase drop: query all P1 sub-phases, combine, find highest priority tier
-            p1_all: List[CompatibleExercise] = []
-            for p1_phase in ("P1_1", "P1_2"):
-                p1_all.extend(list_exercises_for_phase(surgery_type, p1_phase))
+            # Cross-phase drop: query target phase(s), combine, find highest priority tier
+            target_phase_ids: List[str] = downgrade["target_phase_ids"]
+            prev_all: List[CompatibleExercise] = []
+            for tp in target_phase_ids:
+                prev_all.extend(list_exercises_for_phase(surgery_type, tp))
 
-            p1_compatible = [ex for ex in p1_all if _equipment_compatible(ex, equipment_available)]
-            p1_pool = p1_compatible if p1_compatible else p1_all
+            prev_compatible = [ex for ex in prev_all if _equipment_compatible(ex, equipment_available)]
+            prev_pool = prev_compatible if prev_compatible else prev_all
 
-            # Highest priority number = the hardest tier available in P1
-            p1_priorities = sorted({ex.priority for ex in p1_pool})
-            target_priority = p1_priorities[-1] if p1_priorities else 1
+            # Highest priority number = the hardest tier available in the target phase(s)
+            prev_priorities = sorted({ex.priority for ex in prev_pool})
+            target_priority = prev_priorities[-1] if prev_priorities else 1
 
             logger.debug(
-                "Pain downgrade | cross-phase: %s priority %d → P1 priority %d | "
-                "P1 pool=%s",
-                phase_id, working_priority, target_priority,
-                [ex.exercise_id for ex in p1_pool],
+                "Pain downgrade | cross-phase: %s priority %d → %s priority %d | "
+                "prev pool=%s",
+                phase_id, working_priority, target_phase_ids, target_priority,
+                [ex.exercise_id for ex in prev_pool],
             )
-            # Ignore history — user must redo P1 tier from scratch due to pain
-            candidates_at_target = [ex for ex in p1_pool if ex.priority == target_priority]
+            # Ignore history — user must redo previous phase tier from scratch due to pain
+            candidates_at_target = [ex for ex in prev_pool if ex.priority == target_priority]
             candidates_at_target.sort(key=lambda ex: ex.exercise_id)
         else:
             target_priority = downgrade["priority"]
