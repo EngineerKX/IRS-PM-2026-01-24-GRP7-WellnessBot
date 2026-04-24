@@ -171,6 +171,7 @@ def build_welcome_message(profile: dict | None = None, display_name: str = "") -
         "text": (
             f"👋 Welcome to the Wellnessbot{', ' + display_name if display_name else ''}.\n\n"
             "I can help suggest suitable rehabilitation exercises based on your recovery stage.\n\n"
+            "Please select your available tools/equipment if you have not done so.\n\n"
             f"{phase_line}"
             f"{question}"
         ),
