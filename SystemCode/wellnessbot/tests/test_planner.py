@@ -305,25 +305,24 @@ class TestPainDowngrade:
 
     # --- Priority 1 in non-P1 phase → cross-phase drop to previous phase ---
 
-    def test_pain1_priority1_p2_drops_to_p1_exercises(self):
+    def test_pain1_priority1_p2_drops_to_p1_2_exercises(self):
         """
-        User in P2 priority-1 with pain=1 → cross-phase drop to both P1_1 and P1_2
-        (P2's predecessor is the entire P1 block).
-        Should select the highest priority tier available in P1 with equipment filter.
+        User in P2 priority-1 with pain=1 → cross-phase drop to P1_2
+        (P2's immediate predecessor is P1_2, since P1_1 → P1_2 → P2 is the sequential order).
+        Should select the highest priority tier available in P1_2 with equipment filter.
         """
         # No history — working priority for P2 is 1
         result = plan(_nlu(pain=1), "P2", equipment_available=[], exercise_history=[])
-        # P1_1 and P1_2 highest priority = 2.
-        # P1 priority-2 no-equipment exercises: P1_2_E3, P1_2_E4
+        # P1_2 highest priority with no equipment = priority-2 (E3, E4 require no equipment)
         assert result.get("recommend_painkiller") is True
         assert result.get("phase_id") == "P2"  # phase_id in output is the requested phase
         ex_id = result.get("exercise_id", "")
-        assert ex_id.startswith("P1_"), f"Expected P1 exercise, got {ex_id}"
+        assert ex_id.startswith("P1_2_"), f"Expected P1_2 exercise, got {ex_id}"
 
-    def test_pain1_priority1_cross_phase_drop_ignores_p1_history(self):
+    def test_pain1_priority1_cross_phase_drop_ignores_p1_2_history(self):
         """
-        Cross-phase drop from P2 to P1 must ignore prior P1 history.
-        The user must redo P1 exercises from scratch.
+        Cross-phase drop from P2 to P1_2 must ignore prior P1_2 history.
+        The user must redo P1_2 exercises from scratch.
         """
         history = [
             # P1_2 priority-2 exercises previously done
@@ -333,7 +332,7 @@ class TestPainDowngrade:
         result = plan(_nlu(pain=1), "P2", equipment_available=[], exercise_history=history)
         assert result.get("recommend_painkiller") is True
         ex_id = result.get("exercise_id", "")
-        assert ex_id.startswith("P1_"), f"Expected P1 exercise even though P1 history exists, got {ex_id}"
+        assert ex_id.startswith("P1_2_"), f"Expected P1_2 exercise even though P1_2 history exists, got {ex_id}"
 
     def test_first_use_p3_pain1_no_history_no_equipment_drops_to_p2(self):
         """
@@ -384,20 +383,57 @@ class TestPainDowngrade:
 
     # --- Priority 1 in P1 phase → stay at priority 1 (no further downgrade) ---
 
-    def test_pain1_priority1_p1_phase_stays_at_priority1(self):
+    def test_pain1_priority1_p1_1_stays_at_priority1(self):
         """
-        User in P1 phase already at priority-1 (absolute easiest).
+        User in P1_1 already at priority-1 (absolute easiest — no predecessor phase).
         Cannot downgrade further — should still recommend a priority-1 exercise.
         """
         result = plan(_nlu(pain=1), "P1_1", equipment_available=[])
         # P1_1 priority-1: E1 (no equipment)
         _assert_recommended(result, "P1_1_E1", recommend_painkiller=True)
 
-    def test_pain1_p1_2_priority1_stays_at_priority1(self):
-        """Same as above but for P1_2."""
-        result = plan(_nlu(pain=1), "P1_2", equipment_available=["towel", "chair"])
+    def test_pain1_priority2_p1_1_downgrades_to_priority1_same_phase(self):
+        """
+        User in P1_1 at priority-2 with pain=1 → downgrade to priority-1 within P1_1.
+        Should NOT cross-phase drop (P1_1 priority-2 is not at the floor).
+        """
+        history = [_hist("P1_1", "P1_1_E1", priority=1)]
+        result = plan(_nlu(pain=1), "P1_1", equipment_available=[], exercise_history=history)
         assert result.get("recommend_painkiller") is True
-        assert result.get("priority") == 1
+        # Downgrade within P1_1 to priority-1 → restart from P1_1_E1
+        _assert_recommended(result, "P1_1_E1", recommend_painkiller=True)
+
+    def test_p1_1_complete_before_p1_2_can_start(self):
+        """
+        P1_1 and P1_2 are treated as separate sequential phases.
+        History from P1_1 does not count as P1_2 progression.
+        """
+        # All P1_1 exercises done, but P1_2 should start fresh from priority-1
+        history = [
+            _hist("P1_1", "P1_1_E1", priority=1),
+            _hist("P1_1", "P1_1_E2", priority=2),
+            _hist("P1_1", "P1_1_E3", priority=2),
+            _hist("P1_1", "P1_1_E4", priority=2),
+        ]
+        result = plan(_nlu(), "P1_2", equipment_available=["towel", "chair"], exercise_history=history)
+        # P1_2 history is empty, should start from priority-1
+        assert result.get("priority") == 1, (
+            f"P1_2 should start at priority-1 regardless of P1_1 history, got priority={result.get('priority')}"
+        )
+        ex_id = result.get("exercise_id", "")
+        assert ex_id.startswith("P1_2_"), f"Expected P1_2 exercise, got {ex_id}"
+
+    def test_pain1_p1_2_priority1_drops_to_p1_1(self):
+        """
+        User in P1_2 at priority-1 with pain=1 → cross-phase drop to P1_1
+        (P1_2's immediate predecessor is P1_1).
+        Should select the highest priority tier available in P1_1 with equipment filter.
+        """
+        result = plan(_nlu(pain=1), "P1_2", equipment_available=[])
+        assert result.get("recommend_painkiller") is True
+        # P1_1 highest priority with no equipment = priority-1 (E1 requires no equipment)
+        ex_id = result.get("exercise_id", "")
+        assert ex_id.startswith("P1_1_"), f"Expected P1_1 exercise, got {ex_id}"
 
     # --- All exercises in phase done + pain=1 → ESCALATE ---
 
@@ -581,10 +617,10 @@ class TestEdgeCases:
     def test_phase_with_single_priority_tier(self):
         """
         If a phase only has one priority tier, pain downgrade for priority-1 in a
-        non-P1 phase still triggers cross-phase drop.
+        non-P1_1 phase still triggers cross-phase drop.
         """
-        # P2 has priority-1 and priority-2. Test priority-1 drop → cross-phase.
+        # P2 has priority-1 and priority-2. Test priority-1 drop → cross-phase to P1_2.
         result = plan(_nlu(pain=1), "P2", equipment_available=[], exercise_history=[])
         assert result.get("recommend_painkiller") is True
         ex_id = result.get("exercise_id", "")
-        assert ex_id.startswith("P1_"), f"Expected P1 cross-phase exercise, got {ex_id}"
+        assert ex_id.startswith("P1_2_"), f"Expected P1_2 cross-phase exercise, got {ex_id}"
