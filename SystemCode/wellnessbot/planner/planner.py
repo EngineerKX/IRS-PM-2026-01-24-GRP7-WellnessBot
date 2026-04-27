@@ -114,13 +114,11 @@ def _prev_phase_ids(current_phase_id: str) -> List[str]:
     """
     Return the phase(s) immediately before current_phase_id for cross-phase pain downgrade.
 
-    P2 is special: its predecessor is both P1_1 and P1_2 (treated as a single P1 block).
-    All other phases have exactly one predecessor.
-    Returns an empty list if already at P1_1 or P1_2 (no further drop possible).
+    P1_1 → P1_2 → P2 → P3 → P4 → P5 (sequential order).
+    P1_1 has no predecessor; P1_2's predecessor is P1_1; P2's predecessor is P1_2.
+    Returns an empty list if already at P1_1 (no further drop possible).
     """
-    if current_phase_id == "P2":
-        return ["P1_1", "P1_2"]
-    order = ["P2", "P3", "P4", "P5"]
+    order = ["P1_1", "P1_2", "P2", "P3", "P4", "P5"]
     try:
         idx = order.index(current_phase_id)
     except ValueError:
@@ -141,17 +139,16 @@ def _downgrade_priority(
 
     Downgrade rules:
     - Priority 2 or 3 → drop one tier within the same phase
-    - Priority 1 in a non-P1 phase → cross-phase drop to the immediately previous phase,
-      targeting the highest priority number available there.
-      P2 is special: drops to both P1_1 and P1_2 combined.
-    - Priority 1 in a P1 phase → already at absolute easiest; no further downgrade
+    - Priority 1 in a non-P1_1 phase → cross-phase drop to the immediately previous phase
+      (P1_2 → P1_1, P2 → P1_2, P3 → P2, etc.), targeting the highest priority available there.
+    - Priority 1 in P1_1 → already at absolute easiest; no further downgrade
     """
     if working_priority > sorted_priorities[0]:
         idx = sorted_priorities.index(working_priority)
         lower_priority = sorted_priorities[idx - 1]
         return {"cross_phase": False, "priority": lower_priority}
 
-    if current_phase_id.startswith("P1"):
+    if current_phase_id == "P1_1":
         return {"cross_phase": False, "priority": sorted_priorities[0]}
 
     target_phase_ids = _prev_phase_ids(current_phase_id)
