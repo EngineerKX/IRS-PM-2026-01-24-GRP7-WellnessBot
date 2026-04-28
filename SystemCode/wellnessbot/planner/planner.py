@@ -13,11 +13,11 @@ def _equipment_compatible(ex: CompatibleExercise, equipment_available: List[str]
     """
     An exercise is compatible if:
     - It requires no equipment, OR
-    - ALL of its required equipment is in equipment_available.
+    - ANY of its required equipment is in equipment_available.
     """
     if not ex.equipment_required:
         return True
-    return all(req in equipment_available for req in ex.equipment_required)
+    return any(req in equipment_available for req in ex.equipment_required)
 
 
 

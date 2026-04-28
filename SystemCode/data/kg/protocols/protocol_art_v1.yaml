@@ -433,7 +433,7 @@ exercises:
       - chunk_id: P2_E3_C1
         source_id: S4
       - chunk_id: P2_E3_C2
-        source_id: S3
+        source_id: S7
 
   - exercise_id: P2_E4
     name: Double limb standing balance
