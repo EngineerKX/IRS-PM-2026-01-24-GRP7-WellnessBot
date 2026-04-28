@@ -307,7 +307,7 @@ exercises:
       - chunk_id: P1_1_E2_C1
         source_id: S6
       - chunk_id: P1_1_E2_C2
-        source_id: S2
+        source_id: S9
 
   - exercise_id: P1_1_E3
     name: Seated passive knee flexion
