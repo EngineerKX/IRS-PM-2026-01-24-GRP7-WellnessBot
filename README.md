@@ -36,7 +36,7 @@ Overall, Wellness Bot demonstrates a safe, interpretable, and modular approach t
 
 [WellnessBot System Demo — [Watch Video](Video/video.mp4)]
 
-Please refer to Video Folder
+Refer to **video** at Github Folder: `Video`
 
 > Note: It is not mandatory for every project member to appear in the video presentation; presentation by one project member is acceptable.
 
