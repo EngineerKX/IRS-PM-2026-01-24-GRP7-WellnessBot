@@ -97,11 +97,6 @@ Open `SystemCode/.env` and set your key:
 OPENAI_API_KEY=sk-proj-...
 ```
 
-To run without an API key, use Mock Mode instead:
-```dotenv
-MOCK_NLU=1
-```
-
 ### [ 4 ] Run the Streamlit application
 
 **Windows (PowerShell) — from inside `SystemCode/`:**
