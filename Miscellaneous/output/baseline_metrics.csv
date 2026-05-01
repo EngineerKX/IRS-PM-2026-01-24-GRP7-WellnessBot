@@ -1,0 +1,6 @@
+label,precision,recall,f1,support
+RECOMMEND,0.9375,1.0,0.9677,15
+FORBID,0.8889,0.8,0.8421,10
+ESCALATE,0.8571,0.8571,0.8571,7
+,,,,
+accuracy,0.9062,,,
