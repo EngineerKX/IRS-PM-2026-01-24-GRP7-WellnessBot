@@ -1,59 +1,263 @@
 Scenario 1:
-Date of surgery: 14/4/2026
+Date of surgery: 08/04/2026
+Test date: 21/04/2026
+Symptom response: none
+Pain score: 3
+Swelling score: 3
+Actual action: Escalate
+
+Scenario 2:
+Date of surgery: 08/04/2026
+Test date: 21/04/2026
+Symptom response: I am running a high fever today.
+Pain score: 0
+Swelling score: 2
+Actual action: Forbid
+
+Scenario 3:
+Date of surgery: 08/04/2026
+Test date: 21/04/2026
 Symptom response: none
 Pain score: 0
 Swelling score: 1
-
-Scenario 2:
-Date of surgery: 14/4/2026
-Symptom response: I have a fever today
-Pain score: N/A
-Swelling score: N/A
-
-Scenario 3:
-Date of surgery: 1/4/2026
-Symptom response: none
-Pain score: 1
-Swelling score: 0
+Actual action: Recommend
 
 Scenario 4:
-Date of surgery: 1/4/2026
-Symptom response: there is some excessive bleeding
-Pain score: N/A
-Swelling score: N/A
+Date of surgery: 08/04/2026
+Test date: 22/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 2
+Actual action: Recommend
 
 Scenario 5:
-Date of surgery: 15/3/2026
-Symptom response: none
+Date of surgery: 08/04/2026
+Test date: 22/04/2026
+Symptom response: I have noticed quite a bit of bleeding from the incision.
 Pain score: 2
-Swelling score: 2
+Swelling score: 1
+Actual action: Forbid
 
 Scenario 6:
-Date of surgery: 15/3/2026
-Symptom response: I feel feverish today
-Pain score: N/A
-Swelling score: N/A
+Date of surgery: 08/04/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 2
+Actual action: Recommend
 
 Scenario 7:
-Date of surgery: 15/2/2026
-Symptom response: none
-Pain score: 3
-Swelling score: 1
+Date of surgery: 08/04/2026
+Test date: 28/04/2026
+Symptom response: One of the scars split open a little. There was some fresh spotting of blood on my compression bandage.
+Pain score: 2
+Swelling score: 0
+Actual action: Forbid
 
 Scenario 8:
-Date of surgery: 15/2/2026
+Date of surgery: 08/04/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 0
+Actual action: Recommend
+
+Scenario 9:
+Date of surgery: 25/03/2026
+Test date: 21/04/2026
+Symptom response: there is some slight bleeding when I change the bandage.
+Pain score: 2
+Swelling score: 0
+Actual action: Forbid
+
+Scenario 10:
+Date of surgery: 25/03/2026
+Test date: 22/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 1
+Actual action: Recommend
+
+Scenario 11:
+Date of surgery: 25/03/2026
+Test date: 22/04/2026
 Symptom response: none
 Pain score: 1
 Swelling score: 3
+Actual action: Escalate
 
-Scenario 9:
-Date of surgery: 1/2/2026
+Scenario 12:
+Date of surgery: 25/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 2
+Actual action: Recommend
+
+Scenario 13:
+Date of surgery: 25/03/2026
+Test date: 28/04/2026
+Symptom response: spiked a high fever – 39.2°C – and the joint swelled enormously overnight.
+Pain score: NA
+Swelling score: NA
+Actual action: Escalate
+
+Scenario 14:
+Date of surgery: 25/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 0
+Actual action: Recommend
+
+Scenario 15:
+Date of surgery: 11/03/2026
+Test date: 21/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 2
+Actual action: Recommend
+
+Scenario 16:
+Date of surgery: 11/03/2026
+Test date: 22/04/2026
 Symptom response: none
 Pain score: 2
 Swelling score: 0
+Actual action: Forbid
 
-Scenario 10:
-Date of surgery: 1/2/2026
-Symptom response: I am having a fever
-Pain score: N/A
-Swelling score: N/A
+Scenario 17:
+Date of surgery: 11/03/2026
+Test date: 22/04/2026
+Symptom response: I have a mild fever.
+Pain score: NA
+Swelling score: NA
+Actual action: Escalate
+
+Scenario 18:
+Date of surgery: 11/03/2026
+Test date: 22/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 0
+Actual action: Recommend
+
+Scenario 19:
+Date of surgery: 11/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 0
+Actual action: Recommend
+
+Scenario 20:
+Date of surgery: 11/03/2026
+Test date: 28/04/2026
+Symptom response: I felt burning hot last night.
+Pain score: NA
+Swelling score: NA
+Actual action: Escalate
+
+Scenario 21:
+Date of surgery: 11/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 1
+Actual action: Recommend
+
+Scenario 22:
+Date of surgery: 11/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 2
+Swelling score: 1
+Actual action: Forbid
+
+Scenario 23:
+Date of surgery: 11/03/2026
+Test date: 22/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 1
+Actual action: Forbid
+
+Scenario 24:
+Date of surgery: 11/02/2026
+Test date: 21/04/2026
+Symptom response: none
+Pain score: 2
+Swelling score: 1
+Actual action: Forbid
+
+Scenario 25:
+Date of surgery: 11/02/2026
+Test date: 28/04/2026
+Symptom response: I felt mildly feverish – around 38.0°C – and the knee was warm to touch.
+Pain score: NA
+Swelling score: NA
+Actual action: Escalate
+
+Scenario 26:
+Date of surgery: 11/02/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 0
+Swelling score: 2
+Actual action: Recommend
+
+Scenario 27:
+Date of surgery: 21/01/2026
+Test date: 21/04/2026
+Symptom response: My temperature is over 101 degrees.
+Pain score: NA
+Swelling score: NA
+Actual action: Escalate
+
+Scenario 28:
+Date of surgery: 21/01/2026
+Test date: 22/04/2026
+Symptom response: NA
+Pain score: NA
+Swelling score: NA
+Actual action: NA
+
+Scenario 29:
+Date of surgery: 15/04/2026
+Test date: 28/04/2026
+Symptom response: There was quite a lot of blood seeping from the small portal cuts.
+Pain score: 2
+Swelling score: 1
+Actual action: Forbid
+
+Scenario 30:
+Date of surgery: 15/04/2026
+Test date: 28/04/2026
+Symptom response: I noticed a yellowish discharge from one of the portal wounds and a ran a low fever of 37.9°C
+Pain score: 0
+Swelling score: 1
+Actual action: Forbid
+
+Scenario 31:
+Date of surgery: 14/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 0
+Actual action: Recommend
+
+Scenario 32:
+Date of surgery: 17/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 2
+Actual action: Recommend
+
+Scenario 33:
+Date of surgery: 17/03/2026
+Test date: 28/04/2026
+Symptom response: none
+Pain score: 1
+Swelling score: 1
+Actual action: Recommend
