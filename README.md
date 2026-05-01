@@ -1,4 +1,4 @@
-# IRS-PM-2025-[StartDate]-[BatchCode]-GRP-[TeamName]-WellnessBot
+# IRS-PM-2026-01-24-GRP7-TheStacks-WellnessBot
 
 ---
 
@@ -149,3 +149,5 @@ Refer to project report at Github Folder: `ProjectReport`
 
 Refer to Github Folder: `Miscellaneous`
 
+LLM Baseline Evaluation<br>
+•	Contains scripts, test scenarios, and outputs for evaluating LLM decision performance against ground truth, serving as a benchmark for comparison with WellnessBot.
