@@ -14,7 +14,7 @@ Discharged patients undergoing post-arthroscopic knee rehabilitation often lack 
 
 The system adopts a neuro-symbolic approach, combining a structured knowledge graph and rule-based reasoning to ensure deterministic and explainable decision-making. Unlike purely LLM-based systems, Wellness Bot follows a decision-first workflow, where recommendations are generated based on explicit clinical rules and constraints. A retrieval-augmented generation (RAG) module is incorporated to provide evidence-based explanations, while the large language model is restricted to natural language understanding and explanation. This ensures that all critical decisions remain controlled, transparent, and auditable.
 
-The system is evaluated using a multi-layer framework, including decision-level performance through confusion matrix analysis and recommendation-level validation based on rehabilitation phase and user condition. In addition, an offline knowledge loop is implemented to analyse interaction logs, identify recurring issues, and refine rules and knowledge in a controlled manner.
+The system is evaluated using a multi-layer framework, including decision-level classification performance and recommendation-level validation based on rehabilitation phase and user condition.
 
 Overall, Wellness Bot demonstrates a safe, interpretable, and modular approach to rehabilitation support, bridging the gap between research and real-world application while enabling continuous improvement through structured and traceable system refinement.
 
