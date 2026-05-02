@@ -59,11 +59,11 @@ Extract the submitted zip to a location of your choice. Then open a terminal and
 
 ```powershell
 # Windows
-cd path\to\WellnessBot_v2\SystemCode
+cd path\to\IRS-PM-2026-01-24-GRP7-WellnessBot\SystemCode
 ```
 ```bash
 # macOS / Linux
-cd path/to/WellnessBot_v2/SystemCode
+cd path/to/IRS-PM-2026-01-24-GRP7-WellnessBot/SystemCode
 ```
 
 ### [ 2 ] Set up a virtual environment and install dependencies
