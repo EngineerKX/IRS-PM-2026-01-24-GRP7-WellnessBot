@@ -1,0 +1,12 @@
+[
+  {
+    "timestamp_utc": "2026-04-21T16:10:16.596669+00:00",
+    "exercise_id": "P1_2_E3",
+    "exercise_name": "Straight leg raises, supine",
+    "phase_id": "P4",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 1,
+    "action": "RECOMMEND"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "profile_id": "Patient_1A",
+  "display_name": "Patient_1A",
+  "surgery_type": "arthroscopic_knee_surgery",
+  "surgery_date": "2026-04-10",
+  "equipment_available": [
+    "chair",
+    "resistance_band",
+    "towel",
+    "step",
+    "socks",
+    "sliding_board",
+    "strap",
+    "stool",
+    "wall",
+    "table",
+    "stationary_bicycle",
+    "wobble_board",
+    "thick_carpet",
+    "foam_block"
+  ]
+}

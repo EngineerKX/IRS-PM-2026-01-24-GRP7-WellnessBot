@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp_utc": "2026-04-14T15:21:21.237379+00:00",
+    "exercise_id": "P1_1_E2",
+    "exercise_name": "Heel slides",
+    "phase_id": "P3",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-15T15:07:49.827156+00:00",
+    "exercise_id": "P4_E1",
+    "exercise_name": "Step ups, forwards",
+    "phase_id": "P4",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  }
+]

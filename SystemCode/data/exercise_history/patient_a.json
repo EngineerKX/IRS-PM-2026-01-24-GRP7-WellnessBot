@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp_utc": "2026-04-21T14:49:15.490571+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": "P1_1",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 1,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-21T14:56:46.327579+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": "P1_1",
+    "priority": 1,
+    "pain_score": 1,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-22T16:00:49.172036+00:00",
+    "exercise_id": "P1_2_E3",
+    "exercise_name": "Straight leg raises, supine",
+    "phase_id": "P1_2",
+    "priority": 2,
+    "pain_score": 1,
+    "swelling_score": 2,
+    "action": "RECOMMEND"
+  }
+]

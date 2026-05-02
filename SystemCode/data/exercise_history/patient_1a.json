@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp_utc": "2026-04-17T14:05:36.783293+00:00",
+    "exercise_id": "P1_1_E1",
+    "exercise_name": "Ankle pumps",
+    "phase_id": "P1_1",
+    "priority": 1,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  },
+  {
+    "timestamp_utc": "2026-04-17T14:08:39.834486+00:00",
+    "exercise_id": "P1_1_E2",
+    "exercise_name": "Heel slides",
+    "phase_id": "P1_1",
+    "priority": 2,
+    "pain_score": 0,
+    "swelling_score": 0,
+    "action": "RECOMMEND"
+  }
+]
