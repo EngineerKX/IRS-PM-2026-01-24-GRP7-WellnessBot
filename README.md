@@ -34,7 +34,9 @@ Overall, Wellness Bot demonstrates a safe, interpretable, and modular approach t
 
 ## SECTION 4 : VIDEO OF SYSTEM MODELLING & USE CASE DEMO
 
-[WellnessBot System Demo — [Watch Video](Video/video.mp4)]
+[WellnessBot Promotional Video](Video/IRS-PM-2026-01-24-GRP7-TheStacks-WellnessBot-promotion.mp4)
+
+[WellnessBot System Design Video](Video/IRS-PM-2026-01-24-GRP7-TheStacks-WellnessBot-system.mp4)
 
 Refer to **video** at Github Folder: `Video`
 
